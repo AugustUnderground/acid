@@ -1,0 +1,28 @@
+resolver: lts-18.6
+compiler: ghc-8.10.4
+
+packages:
+- .
+
+ghc-options:
+  "$locals": -funfolding-use-threshold=16 -fexcess-precision -optc-O3 -optc-ffast-math -O2 # -v
+
+apply-ghc-options: locals
+
+extra-deps:
+  - git: https://github.com/hasktorch/hasktorch.git
+    commit: 5f97cd3fa1647092de85e4675aebdc3da1967098
+    subdirs:
+      - hasktorch
+      - libtorch-ffi
+      - libtorch-ffi-helper
+  - git: https://github.com/AugustUnderground/mlflow-hs.git
+    commit: 55c529fe25ddea7ffd391b04651050862d3a4596
+  - ihaskell-hvega-0.3.2.0@sha256:57b749f3c14b224af6f9484b2cd531299dd740477aa6e6f300f19a8c291b5fac,1182
+
+extra-include-dirs:
+  - libtorch/include/torch/csrc/api/include
+  - libtorch/include
+
+extra-lib-dirs:
+  - ./libtorch/lib

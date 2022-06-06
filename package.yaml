@@ -1,0 +1,66 @@
+name:                acid
+version:             0.1.0.0
+github:              "augustunderground/acid"
+license:             BSD3
+author:              "Yannick Uhlmann"
+maintainer:          "augustunderground@protonmail.com"
+copyright:           "2022 Yannick Uhlmann"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+synopsis:            Artificial Circuit Designer
+category:            Machine Learning
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/augustunderground/acid#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- hasktorch
+- libtorch-ffi
+- mtl
+- lens
+- wreq
+- http-client
+- bytestring
+- time
+- aeson
+- containers
+- directory
+- optparse-applicative
+- mlflow-hs
+- hvega
+- ihaskell-hvega
+
+library:
+  source-dirs: src
+
+executables:
+  acid-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - acid
+    when:
+    - condition: false
+      other-modules: Paths_acid
+
+tests:
+  acid-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - acid

@@ -1,0 +1,13 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "acid:lib"
+
+    - path: "./app/Main.hs"
+      component: "acid:exe:acid-exe"
+
+    - path: "./app/Paths_edelwace.hs"
+      component: "acid:exe:acid-exe"
+
+    - path: "./test"
+      component: "acid:test:acid-test"
