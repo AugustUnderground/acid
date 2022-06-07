@@ -110,7 +110,7 @@ bufferSize :: Int
 bufferSize    = 10 ^ (6 :: Int)
 -- | Initial sample collecting period
 warmupPeriode :: Int
-warmupPeriode = 50
+warmupPeriode = 1
 
 ------------------------------------------------------------------------------
 -- Hindsight Experience Replay Settings

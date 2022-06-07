@@ -26,30 +26,32 @@ data ReplayMemory = RPB -- ^ Vanilla Replay Buffer
                   deriving (Eq, Show, Read)
 
 -- | Replay Buffer Interface
-class ReplayBuffer b where
+class (Functor b) => ReplayBuffer b where
   -- | Return size of current buffer
-  size     :: b -> Int
+  size     :: b T.Tensor -> Int
   -- | Push one buffer into another
-  push     :: Int -> b -> b -> b
+  push     :: Int -> b T.Tensor -> b T.Tensor -> b T.Tensor
   -- | Look Up given list if indices
-  lookUp   :: [Int] -> b -> b
+  lookUp   :: [Int] -> b T.Tensor -> b T.Tensor
   -- | Take n Random Samples
-  sampleIO :: Int -> b -> IO b
+  sampleIO :: Int -> b T.Tensor -> IO (b T.Tensor)
   -- | Return the Tuple: (s, a, r, s', d) for training
-  asTuple  :: b -> (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
+  asTuple  :: b T.Tensor -> (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
   -- | Collect Experiences in Buffer
-  collectExperience :: (Agent a) => CircusUrl -> Tracker -> Int -> a -> IO b
+  collectExperience :: (Agent a) => CircusUrl -> Tracker -> Int -> a 
+                    -> IO (b T.Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
-randomBatches :: (ReplayBuffer b) => Int -> Int -> b -> IO [MiniBatch]
+randomBatches :: (ReplayBuffer b) => Int -> Int -> b T.Tensor -> IO [MiniBatch]
 randomBatches nb bs buffer = do
-        idx <- (map T.asValue . T.split bl (T.Dim 0) 
-            <$> T.multinomialIO (T.ones' [bl]) num False) :: IO [[Int]]
-        pure $ map (asTuple . (`lookUp` buffer)) idx
+    idx <-  (map T.asValue . T.split bs (T.Dim 0) 
+        <$> T.multinomialIO (T.ones' [bl]) num rpl) :: IO [[Int]]
+
+    pure $ map (asTuple . fmap (T.toDevice T.gpu) . (`lookUp` buffer)) idx
   where
     bl  = size buffer
-    num = if (nb * bs) < bl 
-             then nb * bs else bl
+    num = nb * bs
+    rpl = num > bl
 
 -- | Vanilla Replay Buffer
 data Buffer a = Buffer { states  :: !a   -- ^ States
@@ -70,7 +72,7 @@ instance Applicative Buffer where
       = Buffer (fs s) (fa a) (fr r) (fs' s') (fd d)
 
 -- | Vanilla Replay Buffer implements `ReplayBuffer`
-instance ReplayBuffer (Buffer T.Tensor) where
+instance ReplayBuffer Buffer where
   -- | See documentation for `size'`
   size              = size'
   -- | See documentation for `push'`

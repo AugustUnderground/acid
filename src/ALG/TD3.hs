@@ -12,6 +12,7 @@ module ALG.TD3 ( PolicyNet (..)
                , CriticNet (..)
                , Agent (..)
                , mkAgent
+               , saveAgent'
                ) where
 
 import           Lib
@@ -138,22 +139,23 @@ mkAgent obsDim actDim = do
     pure $ Agent φOnline φTarget θOnline θTarget φOpt θOpt
 
 -- | Save an Agent Checkpoint
-saveAgent' :: String -> Agent -> IO ()
-saveAgent' path Agent{..} = do
+saveAgent :: FilePath -> Agent -> IO Agent
+saveAgent path agent@Agent{..} = do
+    T.saveParams φ  (path ++ "/actorOnline.pt")
+    T.saveParams φ' (path ++ "/actorTarget.pt")
+    T.saveParams θ  (path ++ "/criticOnline.pt")
+    T.saveParams θ' (path ++ "/criticTarget.pt")
 
-        T.saveParams φ  (path ++ "/actorOnline.pt")
-        T.saveParams φ' (path ++ "/actorTarget.pt")
-        T.saveParams θ  (path ++ "/criticOnline.pt")
-        T.saveParams θ' (path ++ "/criticTarget.pt")
+    saveOptim φOptim (path ++ "/actorOptim")
+    saveOptim θOptim (path ++ "/criticOptim")
 
-        saveOptim φOptim (path ++ "/actorOptim")
-        saveOptim θOptim (path ++ "/criticOptim")
+    putStrLn $ "\tSaving Checkpoint at " ++ path ++ " ... "
 
-        putStrLn $ "\tSaving Checkpoint at " ++ path ++ " ... "
+    pure agent
 
 -- | Save an Agent and return the agent
-saveAgent :: String -> Agent -> IO Agent
-saveAgent p a = saveAgent' p a >> pure a
+saveAgent' :: FilePath -> Agent -> IO ()
+saveAgent' p a = void $ saveAgent p a
 
 -- | Load an Agent Checkpoint
 loadAgent :: String -> Int -> Int -> Int -> IO Agent
@@ -173,9 +175,11 @@ loadAgent path obsDim actDim iter = do
 act' :: Agent -> T.Tensor -> IO T.Tensor
 act' Agent{..} s = do
     ε <- T.toFloat <$> T.randnLikeIO a
-    pure $ T.clamp actionLow actionHigh (a + (ε * σAct))
+    pure . T.toDevice d' $ T.clamp actionLow actionHigh (a + (ε * σAct))
   where
-    a = π φ s
+    d' = T.device s
+    s' = T.toDevice T.gpu s
+    a = π φ s'
 
 -- | Get an action to the best ability of the current policy
 act :: Agent -> T.Tensor -> IO T.Tensor
@@ -188,38 +192,38 @@ act Agent{..} s = do
 
 -- | Policy Update Step
 updateStep :: Int -> Int -> Agent -> Tracker -> MiniBatch -> IO Agent
-updateStep iteration epoch agent@Agent{..} tracker (s,a,r,d',s') = do
+updateStep iter epoch agent@Agent{..} tracker (s,a,r,s',d') = do
     a' <- act agent s' >>= T.detach
-    v' <- T.detach $ q' θ' s' a'
+    v' <- T.detach . T.squeezeAll $ q' θ' s' a'
     y  <- T.detach $ r + ((1.0 - d') * γ * v')
 
     let (v1, v2) = q θ s a
-        jQ       = T.mseLoss v1 y + T.mseLoss v2 y
+        jQ       = T.mseLoss (T.squeezeAll v1) y + T.mseLoss (T.squeezeAll v2) y
 
     (θOnline', θOptim') <- T.runStep θ θOptim jQ ηθ
 
     when (verbose && epoch `mod` 10 == 0) do
-        putStrLn $ "\tEpoch " ++ show epoch
+        putStrLn $ "\tEpoch " ++ show epoch ++ ":"
         putStrLn $ "\t\tΘ Loss:\t" ++ show jQ
-    _ <- trackLoss tracker (iter' !! epoch') "Critic_Loss" (T.asValue jQ :: Float)
+
+    _ <- trackLoss tracker (iter' !! epoch) "Critic_Loss" (T.asValue jQ :: Float)
 
     (φOnline', φOptim') <- if epoch `mod` d == 0 
                               then updateActor
                               else pure (φ, φOptim)
 
-    (φTarget', θTarget') <- if epoch' == 0
+    (φTarget', θTarget') <- if epoch == (numEpochs - 1)
                                then syncTargets
                                else pure (φ', θ')
 
     pure $ Agent φOnline' φTarget' θOnline' θTarget' φOptim' θOptim'
   where
-    iter'  = reverse [(iteration * numEpochs) .. (iteration * numEpochs + numEpochs)]
-    epoch' = epoch - 1
+    iter' = map ((iter * numEpochs) +) . reverse $ range numEpochs
     updateActor :: IO (PolicyNet, T.Adam)
     updateActor = do
         when (verbose && epoch `mod` 10 == 0) do
             putStrLn $ "\t\tφ Loss:\t" ++ show jφ
-        _ <- trackLoss tracker ((iter' !! epoch') `div` d)
+        _ <- trackLoss tracker ((iter' !! epoch) `div` d)
                        "Actor_Loss" (T.asValue jφ :: Float)
         T.runStep φ φOptim jφ ηφ
       where
@@ -235,6 +239,9 @@ updateStep iteration epoch agent@Agent{..} tracker (s,a,r,d',s') = do
 
 -- | Update TD3 Policy
 updatePolicy :: CircusUrl -> Tracker -> Int -> [MiniBatch] -> Agent -> IO Agent
-updatePolicy _   _   _    []              agent = pure agent
-updatePolicy url tracker iter (batch:batches) agent = do
-    updateStep iter 0 agent tracker batch >>= updatePolicy url tracker iter batches
+updatePolicy _   _       _    []              agent = pure agent
+updatePolicy url tracker iter (batch:batches) agent =
+    updateStep iter epoch agent tracker batch >>= 
+        updatePolicy url tracker iter batches
+  where
+    epoch = numEpochs - length batches - 1

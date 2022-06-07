@@ -62,7 +62,7 @@ instance Applicative Buffer where
       = Buffer (fs s) (fa a) (fr r) (fs' s') (fd d) (fg g) (fg' g')
 
 -- | Hindsight Experience Replay Buffer implements `ReplayBuffer`
-instance RPB.ReplayBuffer (Buffer T.Tensor) where
+instance RPB.ReplayBuffer Buffer where
   -- | See documentation for `size`
   size              = size
   -- | See documentation for `push`
@@ -151,15 +151,15 @@ asTuple Buffer{..} = (s,a,r,n,d)
 -- not just the episode.
 sampleGoals :: CircusUrl -> Strategy -> Int -> Buffer T.Tensor 
             -> IO (Buffer T.Tensor)
-sampleGoals url Final _ buf@Buffer{..} = do
-    rewards'   <- calculateReward url states' goal
+sampleGoals url Final _ buf = do
+    rewards'   <- calculateReward url (goals' buf) goal
     let dones' = rewards' + 1.0
-        buf'   = Buffer states actions states' rewards' dones' goal goals'
+        buf'   = Buffer (states buf) (actions buf) rewards' (states' buf) 
+                        dones' goal (goals' buf)
     pure $ push cap buf buf'
   where
     bs         = size buf
-    idx        = T.toIntTensor' . (:[]) . pred $ bs
-    goal       = T.repeat [bs, 1] $ T.indexSelect 0 idx goals'
+    goal       = T.repeat [bs, 1] . goals' . lookUp [pred bs] $ buf
     cap        = 2 * bs
 sampleGoals url Episode k' buf = do
     idx        <-  map (T.asValue . T.squeezeAll) . T.split 1 (T.Dim 0) 
@@ -167,7 +167,7 @@ sampleGoals url Episode k' buf = do
     let goal   = T.cat (T.Dim 0) $ map (goals' . (`lookUp` buf)) idx
         rep    = T.full [bs] k' opts
         rbuf   = fmap (T.repeatInterleave' 0 rep) buf
-    rewards'   <- calculateReward url (states' rbuf) goal
+    rewards'   <- calculateReward url (goals' rbuf) goal
     let dones' = rewards' + 1.0
         buf'   = Buffer (states rbuf) (actions rbuf) rewards' (states' rbuf) 
                         dones' goal (goals' rbuf)
@@ -177,16 +177,16 @@ sampleGoals url Episode k' buf = do
     cap        = bs + (k' * bs)
     opts       = T.withDType T.Int32 . T.withDevice T.cpu $ T.defaultOpts
 sampleGoals url Random k' buf = sampleGoals url Episode k' buf
-sampleGoals url Future k' buf | k' >= bs   = pure buf
-                             | otherwise = do 
+sampleGoals url Future k' buf | k' >= bs  = pure buf
+                              | otherwise = do 
     finBuf     <- sampleGoals url Final k' $ lookUp finIdx buf
     idx        <- sequence [  T.asValue . (T.asTensor (bs' :: Int) +) 
                           <$> T.multinomialIO (T.ones' [bs - bs']) k' False 
                            |  bs' <- [ 0 .. bs ], bs' < (bs - k') ]
     let goal   = T.cat (T.Dim 0) $ map (goals' . (`lookUp` buf)) idx
-        rep    = T.full [bs - k'] k' opts
+    let rep    = T.full [bs - k'] k' opts
         rbuf   = T.repeatInterleave' 0 rep <$> lookUp idx' buf
-    rewards'   <- calculateReward url (states' rbuf) goal
+    rewards'   <- calculateReward url (goals' rbuf) goal
     let dones' = rewards' + 1.0
         buf'   = Buffer (states rbuf) (actions rbuf) rewards' (states' rbuf) 
                         dones' goal (goals' rbuf)
@@ -200,36 +200,36 @@ sampleGoals url Future k' buf | k' >= bs   = pure buf
 
 -- | Evaluate Policy for T steps and return experience Buffer
 collectStep :: (Agent a) => CircusUrl -> Tracker -> Int -> Int -> a -> T.Tensor 
-            -> Buffer T.Tensor -> IO (Buffer T.Tensor)
-collectStep url _       _    0 _     _ buf = sampleGoals url Future k buf
-collectStep url tracker iter t agent s buf = do
-    p <- (iter *) <$> numEnvs url
-    a <- if p < warmupPeriode
+            -> T.Tensor -> Buffer T.Tensor -> IO (Buffer T.Tensor)
+collectStep url _       _    0 _     _ _ buf = sampleGoals url Future k buf
+collectStep url tracker iter t agent s g buf = do
+    a <- if iter < warmupPeriode
             then randomAction url
-            else act' agent s >>= T.detach
-    
-    (s', g', g, r, d) <- step url a
+            else act' agent s_ >>= T.detach
+    (s', g', _, r, d) <- step url a
 
     trackReward   tracker (iter' !! t') r
     trackEnvState tracker url (iter' !! t')
 
     let buf' = push bufferSize buf (Buffer s a r s' d g g')
+    
+    (s'',_,g'') <- if T.any d then reset' url d else pure (s',g,g)
 
-    s_ <- if T.any d then fst3 <$> reset' url d else pure s'
+    when (verbose && (iter' !! t') `mod` 10 == 0) do
+        putStrLn $ "\tStep " ++ show (iter' !! t') ++ ":"
+        putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean r)
 
-    when (verbose && iter `mod` 10 == 0) do
-        putStrLn $ "\tAverage Reward: \t" ++ show (T.mean r)
-
-    collectStep url tracker iter t' agent s_ buf'
+    collectStep url tracker iter t' agent s'' g'' buf'
   where
-    iter' = [(iter * horizonT) .. (iter * 2 * horizonT + 1)]
-    t'     = t - 1
+    iter' = map ((iter * horizonT) +) . reverse $ range horizonT
+    t'    = t - 1
+    s_    = T.cat (T.Dim 1) [s, g]
 
 -- | Collect experience for a given number of steps
 collectExperience :: (Agent a) => CircusUrl -> Tracker -> Int -> a 
                    -> IO (Buffer T.Tensor)
 collectExperience url tracker iter agent = do
-    s <- fst3 <$> reset url
-    collectStep url tracker iter horizonT agent s buffer
+    (s,_,g) <- reset url
+    collectStep url tracker iter horizonT agent s g buffer
   where
     buffer = empty

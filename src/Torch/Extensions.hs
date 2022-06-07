@@ -206,8 +206,9 @@ normal' dims = T.randnIO dims opts
 
 -- | Generate Uniformally distributed values in a given range
 uniform' :: [Int] -> Float -> Float -> IO T.Tensor
-uniform' shape lo hi = unscale <$> T.randIO' shape
+uniform' shape lo hi = unscale <$> T.randIO shape opts
   where
+    opts = T.withDevice gpu T.defaultOpts
     xMin = toTensor lo
     xMax = toTensor hi
     unscale x = x * (xMax - xMin) + xMin
