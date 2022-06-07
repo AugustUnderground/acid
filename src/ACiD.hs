@@ -44,9 +44,6 @@ run' addr tracker path Train TD3 HER = do
     (od1,od2,_) <- observationSpace addr
     let obsDim  =  od1 + od2
 
-    putStrLn $ "Action Dims: " ++ show actDim
-    putStrLn $ "Observation Dims: " ++ show obsDim
-
     agent       <- TD3.mkAgent obsDim actDim
     let buffer  =  HER.empty
 
