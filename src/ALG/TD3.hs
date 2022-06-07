@@ -218,7 +218,7 @@ updateStep iter epoch agent@Agent{..} tracker (s,a,r,s',d') = do
 
     pure $ Agent φOnline' φTarget' θOnline' θTarget' φOptim' θOptim'
   where
-    iter' = map ((iter * numEpochs) +) . reverse $ range numEpochs
+    iter' = map ((iter * numEpochs) +) $ range numEpochs
     updateActor :: IO (PolicyNet, T.Adam)
     updateActor = do
         when (verbose && epoch `mod` 10 == 0) do
