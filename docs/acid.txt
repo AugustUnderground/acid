@@ -627,28 +627,28 @@ ERE :: ReplayMemory
 HER :: ReplayMemory
 
 -- | Replay Buffer Interface
-class ReplayBuffer b
+class (Functor b) => ReplayBuffer b
 
 -- | Return size of current buffer
-size :: ReplayBuffer b => b -> Int
+size :: ReplayBuffer b => b Tensor -> Int
 
 -- | Push one buffer into another
-push :: ReplayBuffer b => Int -> b -> b -> b
+push :: ReplayBuffer b => Int -> b Tensor -> b Tensor -> b Tensor
 
 -- | Look Up given list if indices
-lookUp :: ReplayBuffer b => [Int] -> b -> b
+lookUp :: ReplayBuffer b => [Int] -> b Tensor -> b Tensor
 
 -- | Take n Random Samples
-sampleIO :: ReplayBuffer b => Int -> b -> IO b
+sampleIO :: ReplayBuffer b => Int -> b Tensor -> IO (b Tensor)
 
 -- | Return the Tuple: (s, a, r, s', d) for training
-asTuple :: ReplayBuffer b => b -> (Tensor, Tensor, Tensor, Tensor, Tensor)
+asTuple :: ReplayBuffer b => b Tensor -> (Tensor, Tensor, Tensor, Tensor, Tensor)
 
 -- | Collect Experiences in Buffer
-collectExperience :: (ReplayBuffer b, Agent a) => CircusUrl -> Tracker -> Int -> a -> IO b
+collectExperience :: (ReplayBuffer b, Agent a) => CircusUrl -> Tracker -> Int -> a -> IO (b Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
-randomBatches :: ReplayBuffer b => Int -> Int -> b -> IO [MiniBatch]
+randomBatches :: ReplayBuffer b => Int -> Int -> b Tensor -> IO [MiniBatch]
 
 -- | Vanilla Replay Buffer
 data Buffer a
@@ -702,7 +702,7 @@ instance GHC.Classes.Eq a => GHC.Classes.Eq (RPB.Buffer a)
 instance GHC.Show.Show a => GHC.Show.Show (RPB.Buffer a)
 instance GHC.Base.Functor RPB.Buffer
 instance GHC.Base.Applicative RPB.Buffer
-instance RPB.ReplayBuffer (RPB.Buffer Torch.Tensor.Tensor)
+instance RPB.ReplayBuffer RPB.Buffer
 
 
 -- | Hindsight Experience Replay
@@ -769,7 +769,7 @@ instance GHC.Classes.Eq a => GHC.Classes.Eq (RPB.HER.Buffer a)
 instance GHC.Show.Show a => GHC.Show.Show (RPB.HER.Buffer a)
 instance GHC.Base.Functor RPB.HER.Buffer
 instance GHC.Base.Applicative RPB.HER.Buffer
-instance RPB.ReplayBuffer (RPB.HER.Buffer Torch.Tensor.Tensor)
+instance RPB.ReplayBuffer RPB.HER.Buffer
 
 
 -- | Twin Delayed Deep Deterministic Policy Gradient Algorithm
@@ -816,6 +816,9 @@ Agent :: PolicyNet -> PolicyNet -> CriticNet -> CriticNet -> Adam -> Adam -> Age
 
 -- | Agent constructor
 mkAgent :: Int -> Int -> IO Agent
+
+-- | Save an Agent and return the agent
+saveAgent' :: FilePath -> Agent -> IO ()
 instance GHC.Classes.Eq ALG.TD3.PolicyNetSpec
 instance GHC.Show.Show ALG.TD3.PolicyNetSpec
 instance GHC.Classes.Eq ALG.TD3.CriticNetSpec
@@ -837,7 +840,7 @@ instance Torch.NN.Randomizable ALG.TD3.PolicyNetSpec ALG.TD3.PolicyNet
 module ACiD
 
 -- | Runs training on given Agent with Buffer
-train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int -> b -> a -> IO ()
+train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int -> b Tensor -> a -> IO ()
 
 -- | Create Agent and Buffer, then run training
 run' :: CircusUrl -> Tracker -> String -> Mode -> Algorithm -> ReplayMemory -> IO ()
