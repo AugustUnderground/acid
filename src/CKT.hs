@@ -191,6 +191,10 @@ observationSpace addr = do
   where
     fields = ["observation", "achieved_goal", "desired_goal"]
 
+-- | Restart Environment and Restore last state
+recoverLast :: CircusUrl -> IO (Observation [[Float]])
+recoverLast addr = fromJust . decodeStrict <$> get addr "restore_last"
+
 -- | Reset Environment at given URL
 reset'' :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
 reset'' addr mask | null mask =  fromJust . decodeStrict <$> get addr "reset"
@@ -221,9 +225,14 @@ randomAction' addr = fromJust . decodeStrict <$> get addr "random_action"
 randomAction :: CircusUrl -> IO T.Tensor
 randomAction addr = action . fmap T.asTensor <$> randomAction' addr
 
+recover :: CircusUrl -> Maybe (Observation [[Float]]) -> IO (Observation [[Float]])
+recover _    (Just obs) = pure obs
+recover addr Nothing    = recoverLast addr
+
 -- | Take an action in a given Environment and get the new observation
 step' :: CircusUrl -> Action [[Float]] -> IO (Observation [[Float]])
-step' addr action' = fromJust . decodeStrict <$> post addr "step" (toJSON action')
+step' addr action' = post addr "step" (toJSON action') 
+                        >>= recover addr . decodeStrict
 
 -- | Shorthand for taking a Tensor action and returning Tensors
 step :: CircusUrl -> T.Tensor 
