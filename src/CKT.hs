@@ -197,9 +197,8 @@ recoverLast addr = fromJust . decodeStrict <$> get addr "restore_last"
 
 -- | Reset Environment at given URL
 reset'' :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
-reset'' addr mask | null mask =  fromJust . decodeStrict <$> get addr "reset"
-                  | otherwise =  fromJust . decodeStrict
-                             <$> post addr "reset" msk
+reset'' addr mask | null mask =  fromJust . decodeStrict <$> get  addr "reset"
+                  | otherwise =  fromJust . decodeStrict <$> post addr "reset" msk
   where
     msk = toJSON (M.fromList [("env_mask", mask)] :: (M.Map String [Bool]))
 
