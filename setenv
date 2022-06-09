@@ -12,4 +12,7 @@ export LD_LIBRARY_PATH="$CUDA_DIR/lib64":$LD_LIBRARY_PATH
 export LIBRARY_PATH="$CUDA_DIR/include":$LIBRARY_PATH
 
 # HASKTORCH
-export DEVICE="cuda:0"
+export DEVICE="cuda:1"
+
+# MLFLOW
+alias mlf='GUNICORN_CMD_ARGS="--timeout 600" mlflow server --port 6008 --host 0.0.0.0'
