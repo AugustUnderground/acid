@@ -111,13 +111,14 @@ createModelArchiveDir algorithm = do
 
 -- | Create a model archive directory for the given algorithm, ace id and backend
 createModelArchiveDir' :: String -> String -> String -> String -> String 
-                       -> IO String
-createModelArchiveDir' base alg ace pdk spc = do
+                       -> String -> IO String
+createModelArchiveDir' base alg ace pdk var spc = do
     path <- (path' ++) <$> currentTimeStamp'
     createDirectoryIfMissing True path
     pure path
   where
-    path' = base ++ "/" ++ alg ++ "/" ++ ace ++ "-" ++ pdk ++ "-" ++ spc ++ "-"
+    path' = base ++ "/" ++ alg ++ "/" ++ ace ++ "-" ++ pdk ++ "-" ++ spc 
+                 ++ "-v" ++ var ++ "-"
 
 -- | Optimizer moments at given prefix
 saveOptim :: T.Adam -> FilePath -> IO ()
