@@ -11,6 +11,15 @@ Artificial Circuit Designer, a
 
 ## Command Line Interface
 
+Run a training on `op2` in `xh035` with a `TD3` agent and `HER` buffer in the
+`Electric` design space:
+
+```bash
+$ stack exec -- acid-exe -l TD3 -b HER -i op2 -p xh035 -v 0 -s elec
+```
+
+Here is the short help for the CLI and available options:
+
 ```bash
 ACiD
 
@@ -47,8 +56,10 @@ Available options:
 
 ## TODO
 
+- [X] TD3
 - [ ] SAC
 - [ ] PPO
+- [X] HER
 - [ ] PER
 - [ ] ERE
 - [ ] Hyper Parameters as YAML
