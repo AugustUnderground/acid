@@ -203,7 +203,7 @@ collectStep :: (Agent a) => CircusUrl -> Tracker -> Int -> Int -> a -> T.Tensor
             -> T.Tensor -> Buffer T.Tensor -> IO (Buffer T.Tensor)
 collectStep url _       _    0 _     _ _ buf = sampleGoals url Future k buf
 collectStep url tracker iter t agent s g buf = do
-    a <- if iter < warmupPeriode
+    a <- if iter `mod` rngEpisodeFreq == 0
             then randomAction url
             else act' agent s_ >>= T.detach
     (s', g', _, r, d) <- step url a
@@ -221,7 +221,7 @@ collectStep url tracker iter t agent s g buf = do
 
     collectStep url tracker iter t' agent s'' g'' buf'
   where
-    iter' = map ((iter * horizonT) +) . reverse $ range horizonT
+    iter' = map ((iter * horizonT + 1) +) . reverse $ range horizonT
     t'    = t - 1
     s_    = T.cat (T.Dim 1) [s, g]
 
@@ -230,6 +230,7 @@ collectExperience :: (Agent a) => CircusUrl -> Tracker -> Int -> a
                    -> IO (Buffer T.Tensor)
 collectExperience url tracker iter agent = do
     (s,_,g) <- reset url
+    trackEnvState tracker url (iter * horizonT)
     collectStep url tracker iter horizonT agent s g buffer
   where
     buffer = empty
