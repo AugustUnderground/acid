@@ -72,6 +72,7 @@ decayPeriod = 10 ^ (5 :: Int)
 -- | Action Noise standard deviation
 σAct :: T.Tensor
 σAct        = T.toTensor ([0.1] :: [Float])
+-- | Noise Clipping
 σClip :: Float
 σClip       = 0.5
 
@@ -108,9 +109,9 @@ negativeSlope = 0.01
 -- | Replay Buffer Size
 bufferSize :: Int
 bufferSize    = 10 ^ (6 :: Int)
--- | Initial sample collecting period
-warmupPeriode :: Int
-warmupPeriode = 1
+-- | Frequency of random exploration Episodes
+rngEpisodeFreq :: Int
+rngEpisodeFreq = 10
 
 ------------------------------------------------------------------------------
 -- Hindsight Experience Replay Settings
