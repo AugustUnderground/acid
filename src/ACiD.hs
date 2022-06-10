@@ -24,6 +24,12 @@ train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int
 train _    _       path 0       _      agent = void $ saveAgent path agent
 train addr tracker path episode buffer agent = do
 
+    when verbose do
+        let isRandom = if iter `mod` rngEpisodeFreq == 0 
+                          then "Random Exploration" 
+                          else "Policy Exploitation"
+        putStrLn $ "Episode " ++ show iter ++ " (" ++ isRandom ++ "):"
+
     buffer'  <-  push bufferSize buffer 
              <$> collectExperience addr tracker iter agent
 
@@ -40,9 +46,9 @@ train addr tracker path episode buffer agent = do
 run' :: CircusUrl -> Tracker -> String -> Mode -> Algorithm -> ReplayMemory 
     -> IO ()
 run' addr tracker path Train TD3 HER = do
-    actDim      <- actionSpace addr
-    (od1,od2,_) <- observationSpace addr
-    let obsDim  =  od1 + od2
+    actDim     <- actionSpace addr
+    (od,gd,_)  <- observationSpace addr
+    let obsDim =  od + gd
 
     agent       <- TD3.mkAgent obsDim actDim
     let buffer  =  HER.empty
@@ -55,12 +61,13 @@ run :: Args -> IO ()
 run Args{..} = do
     nEnvs   <- numEnvs url'
     tracker <- mkTracker uri' expName >>= newRuns' nEnvs
-    path'   <- createModelArchiveDir' cpPath algorithm ace pdk var
+    path'   <- createModelArchiveDir' cpPath algorithm ace pdk var space
     run' url' tracker path' mode' alg buf
   where
     alg     = read algorithm :: Algorithm
     buf     = read memory    :: ReplayMemory
     mode'   = read mode      :: Mode
+    -- space'  = read space     :: Space
     url'    = url cktHost cktPort ace pdk space var
     uri'    = trackingURI mlfHost mlfPort
     expName = algorithm ++ "-" ++ memory ++ "-" ++ ace ++ "-" ++ pdk
