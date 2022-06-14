@@ -167,14 +167,8 @@ Args :: String -> String -> String -> String -> String -> String -> String -> St
 -- | Run Mode
 [mode] :: Args -> String
 
--- | Type Alias for Mini Batch (state, action, reward, state', done)
-type MiniBatch = (Tensor, Tensor, Tensor, Tensor, Tensor)
-
--- | Apply same function to both Left and Right
-both :: (a -> b) -> Either a a -> b
-
--- | Apply same function to both Left and Right and put back into Either
-both' :: (a -> b) -> Either a a -> Either b b
+-- | Type Alias for Transition Tuple (state, action, reward, state', done)
+type Transition = (Tensor, Tensor, Tensor, Tensor, Tensor)
 
 -- | Range from 0 to n - 1
 range :: Int -> [Int]
@@ -188,11 +182,17 @@ splits :: [Int] -> [[Int]]
 -- | First of Triple
 fst3 :: (a, b, c) -> a
 
+-- | Apply a function to both elements of a Tuple
+both :: (a -> b) -> (a, a) -> (b, b)
+
 -- | Uncurry Triple
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 
 -- | Like <a>lookup</a> but for a list of keys.
 lookup' :: Ord k => [k] -> Map k a -> Maybe [a]
+
+-- | Map an appropriate function over a transition tuple
+tmap :: (Tensor -> Tensor) -> Transition -> Transition
 
 -- | Current Timestamp as formatted string
 currentTimeStamp :: String -> IO String
@@ -205,7 +205,7 @@ createModelArchiveDir :: String -> IO String
 
 -- | Create a model archive directory for the given algorithm, ace id and
 --   backend
-createModelArchiveDir' :: String -> String -> String -> String -> String -> IO String
+createModelArchiveDir' :: String -> String -> String -> String -> String -> String -> IO String
 
 -- | Optimizer moments at given prefix
 saveOptim :: Adam -> FilePath -> IO ()
@@ -325,7 +325,16 @@ actionSpace :: CircusUrl -> IO Int
 -- | Get the number of Environments from the given Circus Server instance
 observationSpace :: CircusUrl -> IO (Int, Int, Int)
 
--- | Reset Environments and get (observation, achieved_goal, desired_goal)
+-- | Reset Environment at given URL reset'' :: CircusUrl -&gt; [Bool] -&gt;
+--   IO (Observation [[Float]]) reset'' addr [] = do res &lt;- get addr
+--   "reset" let dec = decodeStrict res :: Maybe (Observation [[Float]])
+--   when (isNothing dec) do print res pure $ fromJust dec reset'' addr
+--   mask = do res &lt;- post addr "reset" msk let dec = decodeStrict res
+--   :: Maybe (Observation [[Float]]) when (isNothing dec) do print res
+--   pure $ fromJust dec where msk = toJSON (M.fromList [("env_mask",
+--   mask)] :: (M.Map String [Bool]))
+--   
+--   Reset Environments and get (observation, achieved_goal, desired_goal)
 reset :: CircusUrl -> IO (Tensor, Tensor, Tensor)
 
 -- | Reset subset of environments with given mask
@@ -512,7 +521,7 @@ act :: Agent a => a -> Tensor -> IO Tensor
 act' :: Agent a => a -> Tensor -> IO Tensor
 
 -- | Update Policy
-updatePolicy :: Agent a => CircusUrl -> Tracker -> Int -> [MiniBatch] -> a -> IO a
+updatePolicy :: Agent a => CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a
 instance GHC.Read.Read ALG.Algorithm
 instance GHC.Show.Show ALG.Algorithm
 instance GHC.Classes.Eq ALG.Algorithm
@@ -572,6 +581,8 @@ decayPeriod :: Int
 
 -- | Action Noise standard deviation
 σAct :: Tensor
+
+-- | Noise Clipping
 σClip :: Float
 
 -- | Number of units per hidden layer
@@ -598,8 +609,8 @@ negativeSlope :: Float
 -- | Replay Buffer Size
 bufferSize :: Int
 
--- | Initial sample collecting period
-warmupPeriode :: Int
+-- | Frequency of random exploration Episodes
+rngEpisodeFreq :: Int
 
 -- | Number of Additional Targets to sample
 k :: Int
@@ -648,7 +659,7 @@ asTuple :: ReplayBuffer b => b Tensor -> (Tensor, Tensor, Tensor, Tensor, Tensor
 collectExperience :: (ReplayBuffer b, Agent a) => CircusUrl -> Tracker -> Int -> a -> IO (b Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
-randomBatches :: ReplayBuffer b => Int -> Int -> b Tensor -> IO [MiniBatch]
+randomBatches :: ReplayBuffer b => Int -> Int -> b Tensor -> IO [Transition]
 
 -- | Vanilla Replay Buffer
 data Buffer a
@@ -688,7 +699,7 @@ lookUp' :: [Int] -> Buffer Tensor -> Buffer Tensor
 sampleIO' :: Int -> Buffer Tensor -> IO (Buffer Tensor)
 
 -- | Return (State, Action, Reward, Next State, Done) Tuple
-asTuple' :: Buffer Tensor -> MiniBatch
+asTuple' :: Buffer Tensor -> Transition
 
 -- | Evaluate Policy for T steps and return experience Buffer
 collectStep :: Agent a => CircusUrl -> Tracker -> Int -> Int -> a -> Tensor -> Buffer Tensor -> IO (Buffer Tensor)
