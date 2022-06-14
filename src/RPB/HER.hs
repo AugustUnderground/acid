@@ -2,6 +2,7 @@
 
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -137,7 +138,7 @@ epsSplit buf@Buffer{..} | T.any dones = map (`lookUp` buf) dix
     dix    = splits (0 : (T.asValue dones' :: [Int]))
 
 -- | Return (State, Action, Reward, Next State, Done) Tuple
-asTuple :: Buffer T.Tensor -> MiniBatch
+asTuple :: Buffer T.Tensor -> Transition
 asTuple Buffer{..} = (s,a,r,n,d)
   where
     s = T.cat (T.Dim 1) [states, goals]
@@ -205,25 +206,31 @@ collectStep url _       _    0 _     _ _ buf = sampleGoals url Future k buf
 collectStep url tracker iter t agent s g buf = do
     a <- if iter `mod` rngEpisodeFreq == 0
             then randomAction url
-            else act' agent s_ >>= T.detach
-    (s', g', _, r, d) <- step url a
+            else act' agent obs >>= T.detach
 
-    trackReward   tracker (iter' !! t') r
+    (!n,!ag,!dg,!r,!d) <- step url a
+
+    let buf' = push bufferSize buf (Buffer s a r n d dg ag)
+
+    trackReward   tracker     (iter' !! t') r
     trackEnvState tracker url (iter' !! t')
 
-    let buf' = push bufferSize buf (Buffer s a r s' d g g')
-    
-    (s'',_,g'') <- if T.any d then reset' url d else pure (s',g,g)
+    (!s',_,!g') <- if T.any d then reset' url d else pure (n, ag, dg)
 
     when (verbose && (iter' !! t') `mod` 10 == 0) do
         putStrLn $ "\tStep " ++ show (iter' !! t') ++ ":"
-        putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean r)
+        putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean . rewards $ buf')
 
-    collectStep url tracker iter t' agent s'' g'' buf'
+    when (verbose && T.any d) do
+        let ds = T.squeezeAll . T.nonzero $ d
+        putStrLn $ "\t\tDone with: " ++ show ds ++ "\n\t\t\tAfter " 
+                    ++  show (iter' !! t') ++ " steps."
+
+    collectStep url tracker iter t' agent s' g' buf'
   where
+    obs = T.cat (T.Dim 1) [s, g]
     iter' = map ((iter * horizonT + 1) +) . reverse $ range horizonT
     t'    = t - 1
-    s_    = T.cat (T.Dim 1) [s, g]
 
 -- | Collect experience for a given number of steps
 collectExperience :: (Agent a) => CircusUrl -> Tracker -> Int -> a 
