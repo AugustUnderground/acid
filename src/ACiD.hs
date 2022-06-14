@@ -17,6 +17,7 @@ import           RPB
 import qualified ALG.TD3             as TD3
 import qualified RPB.HER             as HER
 import qualified Torch               as T
+import qualified Torch.Extensions    as T
 
 -- | Runs training on given Agent with Buffer
 train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int 
@@ -33,7 +34,8 @@ train addr tracker path episode buffer agent = do
     buffer'  <-  push bufferSize buffer 
              <$> collectExperience addr tracker iter agent
 
-    batches  <-  randomBatches numEpochs batchSize buffer'
+    batches  <-  map (tmap (T.toDevice T.gpu)) 
+             <$> randomBatches numEpochs batchSize buffer'
 
     agent'   <-  updatePolicy addr tracker iter batches agent >>= saveAgent path
 

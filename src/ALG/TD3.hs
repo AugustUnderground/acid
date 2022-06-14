@@ -191,14 +191,14 @@ act Agent{..} s = do
     a = π φ' s
 
 -- | Policy Update Step
-updateStep :: Int -> Int -> Agent -> Tracker -> MiniBatch -> IO Agent
+updateStep :: Int -> Int -> Agent -> Tracker -> Transition -> IO Agent
 updateStep iter epoch agent@Agent{..} tracker (s,a,r,s',d') = do
     a' <- act agent s' >>= T.detach
     v' <- T.detach . T.squeezeAll $ q' θ' s' a'
     y  <- T.detach $ r + ((1.0 - d') * γ * v')
 
-    let (v1, v2) = q θ s a
-        jQ       = T.mseLoss (T.squeezeAll v1) y + T.mseLoss (T.squeezeAll v2) y
+    let (v1, v2) = both T.squeezeAll $ q θ s a
+        jQ       = T.mseLoss v1 y + T.mseLoss v2 y
 
     (θOnline', θOptim') <- T.runStep θ θOptim jQ ηθ
 
@@ -208,9 +208,9 @@ updateStep iter epoch agent@Agent{..} tracker (s,a,r,s',d') = do
 
     _ <- trackLoss tracker (iter' !! epoch) "Critic_Loss" (T.asValue jQ :: Float)
 
-    (φOnline', φOptim') <- if epoch `mod` d == 0 
-                              then updateActor
-                              else pure (φ, φOptim)
+    (φOnline', φOptim')  <- if epoch `mod` d == 0 
+                               then updateActor
+                               else pure (φ, φOptim)
 
     (φTarget', θTarget') <- if epoch == (numEpochs - 1)
                                then syncTargets
@@ -238,7 +238,7 @@ updateStep iter epoch agent@Agent{..} tracker (s,a,r,s',d') = do
         pure (φTarget', θTarget')
 
 -- | Update TD3 Policy
-updatePolicy :: CircusUrl -> Tracker -> Int -> [MiniBatch] -> Agent -> IO Agent
+updatePolicy :: CircusUrl -> Tracker -> Int -> [Transition] -> Agent -> IO Agent
 updatePolicy _   _       _    []              agent = pure agent
 updatePolicy url tracker iter (batch:batches) agent =
     updateStep iter epoch agent tracker batch >>= 

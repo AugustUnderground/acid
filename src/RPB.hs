@@ -42,12 +42,13 @@ class (Functor b) => ReplayBuffer b where
                     -> IO (b T.Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
-randomBatches :: (ReplayBuffer b) => Int -> Int -> b T.Tensor -> IO [MiniBatch]
+randomBatches :: (ReplayBuffer b) => Int -> Int -> b T.Tensor -> IO [Transition]
 randomBatches nb bs buffer = do
     idx <-  (map T.asValue . T.split bs (T.Dim 0) 
-        <$> T.multinomialIO (T.ones' [bl]) num rpl) :: IO [[Int]]
+                    <$> T.multinomialIO (T.ones' [bl]) num rpl
+            ) :: IO [[Int]]
 
-    pure $ map (asTuple . fmap (T.toDevice T.gpu) . (`lookUp` buffer)) idx
+    pure $ map (asTuple . (`lookUp` buffer)) idx
   where
     bl  = size buffer
     num = nb * bs
@@ -130,7 +131,7 @@ sampleIO' num buf = do
     len = size buf
 
 -- | Return (State, Action, Reward, Next State, Done) Tuple
-asTuple' :: Buffer T.Tensor -> MiniBatch
+asTuple' :: Buffer T.Tensor -> Transition
 asTuple' (Buffer s a r n d) = (s,a,r,n,d)
 
 -- | Evaluate Policy for T steps and return experience Buffer

@@ -46,21 +46,12 @@ data Args = Args { algorithm :: String -- ^ See ALG.Algorithm
                  , mode      :: String -- ^ Run Mode
                  } deriving (Show)
 
--- | Type Alias for Mini Batch (state, action, reward, state', done)
-type MiniBatch = (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
+-- | Type Alias for Transition Tuple (state, action, reward, state', done)
+type Transition = (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
 
 ------------------------------------------------------------------------------
 -- Convenience / Syntactic Sugar
 ------------------------------------------------------------------------------
-
--- | Apply same function to both Left and Right
-both :: (a -> b) -> Either a a -> b
-both f = either f f
-
--- | Apply same function to both Left and Right and put back into Either
-both' :: (a -> b) -> Either a a -> Either b b
-both' f (Right e) = Right (f e)
-both' f (Left e)  = Left (f e)
 
 -- | Range from 0 to n - 1
 range :: Int -> [Int]
@@ -80,6 +71,10 @@ splits []       = []
 fst3 :: (a,b,c) -> a
 fst3 (a,_,_) = a
 
+-- | Apply a function to both elements of a Tuple
+both :: (a -> b) -> (a,a) -> (b,b)
+both f (x, y) = (f x, f y)
+
 -- | Uncurry Triple
 uncurry3 :: (a -> b -> c -> d) -> (a, b, c) -> d
 uncurry3 f (a, b, c) = f a b c
@@ -87,6 +82,10 @@ uncurry3 f (a, b, c) = f a b c
 -- | Like `Data.Map.lookup` but for a list of keys.
 lookup' :: (Ord k) => [k] -> M.Map k a -> Maybe [a]
 lookup' ks m = mapM (`M.lookup` m) ks
+
+-- | Map an appropriate function over a transition tuple
+tmap :: (T.Tensor -> T.Tensor) -> Transition -> Transition
+tmap f (s, a, r, n, d) = (f s, f a, f r, f n, f d)
 
 ------------------------------------------------------------------------------
 -- File System

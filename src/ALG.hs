@@ -25,4 +25,4 @@ class Agent a where
   -- | Take a noisy action
   act'           :: a -> Tensor -> IO Tensor
   -- | Update Policy
-  updatePolicy   :: CircusUrl -> Tracker -> Int -> [MiniBatch] -> a -> IO a
+  updatePolicy   :: CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a
