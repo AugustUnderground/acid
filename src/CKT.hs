@@ -197,16 +197,17 @@ recoverLast addr = fromJust . decodeStrict <$> get addr "restore_last"
 
 -- | Reset Environment at given URL
 reset'' :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
-reset'' addr mask | null mask =  fromJust . decodeStrict <$> get  addr "reset"
-                  | otherwise =  fromJust . decodeStrict <$> post addr "reset" msk
+reset'' addr  []  = fromJust . decodeStrict <$> get  addr "reset"
+reset'' addr mask = fromJust . decodeStrict <$> post addr "reset" msk
   where
     msk = toJSON (M.fromList [("env_mask", mask)] :: (M.Map String [Bool]))
 
 -- | Reset Environments and get (observation, achieved_goal, desired_goal)
 reset :: CircusUrl -> IO (T.Tensor, T.Tensor, T.Tensor)
 reset addr = do
-    obs <- fmap T.asTensor <$> reset'' addr []
-    pure (observation obs, achievedGoal obs, desiredGoal obs)
+    (Observation observation achieved desired _ _ _) 
+            <- fmap T.asTensor <$> reset'' addr []
+    pure (observation, achieved, desired)
 
 -- | Reset subset of environments with given mask
 reset' :: CircusUrl -> T.Tensor -> IO (T.Tensor, T.Tensor, T.Tensor)
@@ -224,7 +225,9 @@ randomAction' addr = fromJust . decodeStrict <$> get addr "random_action"
 randomAction :: CircusUrl -> IO T.Tensor
 randomAction addr = action . fmap T.asTensor <$> randomAction' addr
 
-recover :: CircusUrl -> Maybe (Observation [[Float]]) -> IO (Observation [[Float]])
+-- | Recover Last state
+recover :: CircusUrl -> Maybe (Observation [[Float]]) 
+        -> IO (Observation [[Float]])
 recover _    (Just obs) = pure obs
 recover addr Nothing    = recoverLast addr
 
