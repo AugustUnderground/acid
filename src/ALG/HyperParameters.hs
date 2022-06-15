@@ -15,7 +15,7 @@ verbose :: Bool
 verbose     = True
 -- | Number of episodes to play
 numEpisodes :: Int
-numEpisodes = 200
+numEpisodes = 100
 -- | Maximum Number of Steps per Episode
 horizonT :: Int
 horizonT    = 50
