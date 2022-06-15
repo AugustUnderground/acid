@@ -325,16 +325,7 @@ actionSpace :: CircusUrl -> IO Int
 -- | Get the number of Environments from the given Circus Server instance
 observationSpace :: CircusUrl -> IO (Int, Int, Int)
 
--- | Reset Environment at given URL reset'' :: CircusUrl -&gt; [Bool] -&gt;
---   IO (Observation [[Float]]) reset'' addr [] = do res &lt;- get addr
---   "reset" let dec = decodeStrict res :: Maybe (Observation [[Float]])
---   when (isNothing dec) do print res pure $ fromJust dec reset'' addr
---   mask = do res &lt;- post addr "reset" msk let dec = decodeStrict res
---   :: Maybe (Observation [[Float]]) when (isNothing dec) do print res
---   pure $ fromJust dec where msk = toJSON (M.fromList [("env_mask",
---   mask)] :: (M.Map String [Bool]))
---   
---   Reset Environments and get (observation, achieved_goal, desired_goal)
+-- | Reset Environments and get (observation, achieved_goal, desired_goal)
 reset :: CircusUrl -> IO (Tensor, Tensor, Tensor)
 
 -- | Reset subset of environments with given mask
