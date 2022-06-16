@@ -16,3 +16,6 @@ export DEVICE="cuda:1"
 
 # MLFLOW
 alias mlf='GUNICORN_CMD_ARGS="--timeout 600" mlflow server --port 6008 --host 0.0.0.0'
+
+# Kill circus server
+alias killckt='kill -9 "$(ps -aux | grep 'carnival' | grep 'python' | awk '{print $2}')" && pkill spectre'
