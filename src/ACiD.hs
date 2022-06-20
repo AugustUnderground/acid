@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -14,10 +15,36 @@ import           MLFlow.Extensions
 import           ALG
 import           ALG.HyperParameters
 import           RPB
+import qualified Data.Set            as S
 import qualified ALG.TD3             as TD3
 import qualified RPB.HER             as HER
 import qualified Torch               as T
 import qualified Torch.Extensions    as T
+
+-- | Policy evaluation Episode
+eval :: (Agent a) => CircusUrl -> Tracker -> Int  -> a -> Int -> T.Tensor 
+     -> S.Set Int -> IO ()
+eval addr tracker episode agent t state dones | dones == S.empty = pure ()
+                                              | otherwise        = do
+    (!state',_,_,_,!done) <- step addr $ act'' agent state
+    
+    numEnvs' <- numEnvs addr
+
+    let dones'' = T.asValue . T.squeezeAll . T.nonzero $ done :: [Int]
+        dones'  = delete' dones'' dones
+        success = realToFrac (abs (S.size dones' - numEnvs') ) / 
+                        realToFrac numEnvs' * 100.0
+
+    when (verbose && (t' `mod` 10 == 0)) do
+        putStrLn $ "\tSuccess Rate: " ++ show success ++ "%"
+
+    _   <- trackLoss tracker (episode' !! t) "Success" success
+    trackEnvState tracker addr (episode' !! t')
+    
+    eval addr tracker episode agent t' state' dones'
+  where
+    t'       = t + 1
+    episode' = map ((episode * horizonT + 1) +) . reverse $ range horizonT
 
 -- | Runs training on given Agent with Buffer
 train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int 
@@ -26,7 +53,7 @@ train _    _       path 0       _      agent = void $ saveAgent path agent
 train addr tracker path episode buffer agent = do
 
     when verbose do
-        let isRandom = if iter `mod` rngEpisodeFreq == 0 
+        let isRandom = if iter `mod` explFreq == 0 
                           then "Random Exploration" 
                           else "Policy Exploitation"
         putStrLn $ "Episode " ++ show iter ++ " (" ++ isRandom ++ "):"
@@ -38,6 +65,13 @@ train addr tracker path episode buffer agent = do
              <$> randomBatches numEpochs batchSize buffer'
 
     agent'   <-  updatePolicy addr tracker iter batches agent >>= saveAgent path
+
+    when (iter /= 0 && iter `mod` evalFreq == 0) do
+        putStrLn "Policy Evaluation Episode"
+        dones <- S.fromList . range <$> numEnvs addr
+        (state,_,_) <- reset addr
+        eval addr tracker (episode `div` iter) agent 0 state dones
+        pure ()
 
     train addr tracker path episode' buffer' agent'
   where

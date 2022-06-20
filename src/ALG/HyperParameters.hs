@@ -110,8 +110,11 @@ negativeSlope = 0.01
 bufferSize :: Int
 bufferSize    = 10 ^ (6 :: Int)
 -- | Frequency of random exploration Episodes
-rngEpisodeFreq :: Int
-rngEpisodeFreq = 10
+explFreq :: Int
+explFreq = 10
+-- | Frequency of Evaluation Episodes
+evalFreq :: Int
+evalFreq = 5
 
 ------------------------------------------------------------------------------
 -- Hindsight Experience Replay Settings

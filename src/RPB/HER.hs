@@ -204,7 +204,7 @@ collectStep :: (Agent a) => CircusUrl -> Tracker -> Int -> Int -> a -> T.Tensor
             -> T.Tensor -> Buffer T.Tensor -> IO (Buffer T.Tensor)
 collectStep url _       _    0 _     _ _ buf = sampleGoals url Future k buf
 collectStep url tracker iter t agent s g buf = do
-    a <- if iter `mod` rngEpisodeFreq == 0
+    a <- if iter `mod` explFreq == 0
             then randomAction url
             else act' agent obs >>= T.detach
 

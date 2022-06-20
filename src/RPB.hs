@@ -140,7 +140,7 @@ collectStep :: (Agent a) => CircusUrl -> Tracker -> Int -> Int -> a -> T.Tensor
 collectStep _   _       _    0 _     _ buf = pure buf
 collectStep url tracker iter t agent s buf = do
     p <- (iter *) <$> numEnvs url
-    a <- if p `mod` rngEpisodeFreq == 0
+    a <- if p `mod` explFreq == 0
             then randomAction url
             else act' agent s >>= T.detach
     

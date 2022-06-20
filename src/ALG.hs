@@ -24,5 +24,7 @@ class Agent a where
   act            :: a -> Tensor -> IO Tensor
   -- | Take a noisy action
   act'           :: a -> Tensor -> IO Tensor
+  -- | Take an action without any noise
+  act''          :: a -> Tensor -> Tensor
   -- | Update Policy
   updatePolicy   :: CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a

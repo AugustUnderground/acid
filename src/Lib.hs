@@ -13,6 +13,7 @@
 module Lib where
 
 import qualified Data.Map           as M
+import qualified Data.Set           as S
 import           Data.Time.Clock          (getCurrentTime)
 import           Data.Time.Format         (formatTime, defaultTimeLocale)
 import           System.Directory
@@ -60,6 +61,10 @@ range n = [0 .. (n - 1)]
 -- | First of triple
 fst' :: (a,b,c) -> a
 fst' (a,_,_) = a
+
+-- | Delete multiple elements from a Set
+delete' :: (Ord a) => [a] -> S.Set a -> S.Set a
+delete' elems set = S.unions $ map (`S.delete` set) elems
 
 -- | Helper function creating split indices
 splits :: [Int] -> [[Int]]

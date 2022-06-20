@@ -121,6 +121,7 @@ instance ALG.Agent Agent where
   loadAgent      = loadAgent
   act'           = act'
   act            = act
+  act''          = act''
   updatePolicy   = updatePolicy
 
 -- | Agent constructor
@@ -181,7 +182,7 @@ act' Agent{..} s = do
     s' = T.toDevice T.gpu s
     a = π φ s'
 
--- | Get an action to the best ability of the current policy
+-- | Get an action with clipped noise
 act :: Agent -> T.Tensor -> IO T.Tensor
 act Agent{..} s = do
     ε' <- T.toFloat <$> T.randnLikeIO a 
@@ -189,6 +190,10 @@ act Agent{..} s = do
     pure $ T.clamp actionLow actionHigh (a + ε)
   where
     a = π φ' s
+
+-- | Get an action without any noise
+act'' :: Agent -> T.Tensor -> T.Tensor
+act'' Agent{..} = π φ'
 
 -- | Policy Update Step
 updateStep :: Int -> Int -> Agent -> Tracker -> Transition -> IO Agent
