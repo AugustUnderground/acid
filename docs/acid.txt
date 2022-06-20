@@ -176,6 +176,9 @@ range :: Int -> [Int]
 -- | First of triple
 fst' :: (a, b, c) -> a
 
+-- | Delete multiple elements from a Set
+delete' :: Ord a => [a] -> Set a -> Set a
+
 -- | Helper function creating split indices
 splits :: [Int] -> [[Int]]
 
@@ -415,6 +418,8 @@ instance GHC.Read.Read CKT.PDK
 instance GHC.Show.Show CKT.Circuit
 instance GHC.Read.Read CKT.Circuit
 
+
+-- | ACiD Specific Extensions to the mlflow-hs package
 module MLFlow.Extensions
 
 -- | Sanatize JSON for MLFlow: Names may only contain alphanumerics,
@@ -511,6 +516,9 @@ act :: Agent a => a -> Tensor -> IO Tensor
 -- | Take a noisy action
 act' :: Agent a => a -> Tensor -> IO Tensor
 
+-- | Take an action without any noise
+act'' :: Agent a => a -> Tensor -> Tensor
+
 -- | Update Policy
 updatePolicy :: Agent a => CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a
 instance GHC.Read.Read ALG.Algorithm
@@ -601,7 +609,10 @@ negativeSlope :: Float
 bufferSize :: Int
 
 -- | Frequency of random exploration Episodes
-rngEpisodeFreq :: Int
+explFreq :: Int
+
+-- | Frequency of Evaluation Episodes
+evalFreq :: Int
 
 -- | Number of Additional Targets to sample
 k :: Int
@@ -840,6 +851,9 @@ instance Torch.NN.Randomizable ALG.TD3.PolicyNetSpec ALG.TD3.PolicyNet
 
 -- | Artificial Circuit Designer
 module ACiD
+
+-- | Policy evaluation Episode
+eval :: Agent a => CircusUrl -> Tracker -> Int -> a -> Int -> Tensor -> Set Int -> IO ()
 
 -- | Runs training on given Agent with Buffer
 train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int -> b Tensor -> a -> IO ()

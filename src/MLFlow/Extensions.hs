@@ -3,6 +3,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- | ACiD Specific Extensions to the mlflow-hs package
 module MLFlow.Extensions where
 
 import qualified Torch                 as T
