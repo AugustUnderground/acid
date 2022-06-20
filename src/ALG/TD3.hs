@@ -193,7 +193,7 @@ act Agent{..} s = do
 
 -- | Get an action without any noise
 act'' :: Agent -> T.Tensor -> T.Tensor
-act'' Agent{..} = π φ'
+act'' Agent{..} = T.toDevice T.cpu . π φ' . T.toDevice T.gpu
 
 -- | Policy Update Step
 updateStep :: Int -> Int -> Agent -> Tracker -> Transition -> IO Agent

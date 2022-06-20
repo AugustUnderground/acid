@@ -24,9 +24,12 @@ import qualified Torch.Extensions    as T
 -- | Policy evaluation Episode
 eval :: (Agent a) => CircusUrl -> Tracker -> Int  -> a -> Int -> T.Tensor 
      -> S.Set Int -> IO ()
-eval addr tracker episode agent t state dones | dones == S.empty = pure ()
-                                              | otherwise        = do
-    (!state',_,_,_,!done) <- step addr $ act'' agent state
+eval addr tracker episode agent t obs dones | dones == S.empty = do
+    when (t >= horizonT) do
+        putStrLn "\tSuccess Rate: 0%"
+                                            | otherwise        = do
+    (!state',_,goal,_,!done) <- step addr $ act'' agent obs
+    let obs'    = T.cat (T.Dim 1) [state', goal]
     
     numEnvs' <- numEnvs addr
 
@@ -41,7 +44,7 @@ eval addr tracker episode agent t state dones | dones == S.empty = pure ()
     _   <- trackLoss tracker (episode' !! t) "Success" success
     trackEnvState tracker addr (episode' !! t')
     
-    eval addr tracker episode agent t' state' dones'
+    eval addr tracker episode agent t' obs' dones'
   where
     t'       = t + 1
     episode' = map ((episode * horizonT + 1) +) . reverse $ range horizonT
@@ -68,9 +71,10 @@ train addr tracker path episode buffer agent = do
 
     when (iter /= 0 && iter `mod` evalFreq == 0) do
         putStrLn "Policy Evaluation Episode"
-        dones <- S.fromList . range <$> numEnvs addr
-        (state,_,_) <- reset addr
-        eval addr tracker (episode `div` iter) agent 0 state dones
+        dones          <- S.fromList . range <$> numEnvs addr
+        (state,_,goal) <- reset addr
+        let obs        = T.cat (T.Dim 1) [state, goal]
+        eval addr tracker (episode `div` (iter + 1)) agent 0 obs dones
         pure ()
 
     train addr tracker path episode' buffer' agent'
