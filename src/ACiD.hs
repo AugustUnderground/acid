@@ -33,9 +33,9 @@ eval addr tracker agent episode t obs success False = do
     
     when (verbose && t `mod` 10 == 0) do
         putStrLn $ "\tStep " ++ show t ++ ":"
-        putStrLn $ "\t\tSuccess Rate: " ++ show success ++ "%"
+        putStrLn $ "\t\tSuccess Rate: " ++ show success' ++ "%"
 
-    _ <- trackLoss tracker (iter' !! t) "Success" success
+    _ <- trackLoss tracker (iter' !! t) "Success" success'
 
     eval addr tracker agent episode t' obs' success' done'
   where
