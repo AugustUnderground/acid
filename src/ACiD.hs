@@ -15,39 +15,30 @@ import           MLFlow.Extensions
 import           ALG
 import           ALG.HyperParameters
 import           RPB
-import qualified Data.Set            as S
+-- import qualified Data.Set            as S
 import qualified ALG.TD3             as TD3
 import qualified RPB.HER             as HER
 import qualified Torch               as T
 import qualified Torch.Extensions    as T
 
 -- | Policy evaluation Episode
-eval :: (Agent a) => CircusUrl -> Tracker -> Int  -> a -> Int -> T.Tensor 
-     -> S.Set Int -> IO ()
-eval addr tracker episode agent t obs dones | dones == S.empty = do
-    when (t >= horizonT) do
-        putStrLn "\tSuccess Rate: 0%"
-                                            | otherwise        = do
-    (!state',_,goal,_,!done) <- step addr $ act'' agent obs
-    let obs'    = T.cat (T.Dim 1) [state', goal]
+eval :: (Agent a) => CircusUrl -> a -> Int -> T.Tensor -> Float -> Bool 
+     -> IO Float
+eval _    _     _ _   success True  = pure success
+eval addr agent t obs success False = do
+    (!state',_,!goal,!reward,!done) <- step addr $ act'' agent obs
+
+    let success' = successRate done reward
+        done'    = T.all done
+        obs'     = T.cat (T.Dim 1) [state', goal]
     
-    numEnvs' <- numEnvs addr
+    when (verbose && t `mod` 10 == 0) do
+        putStrLn $ "\tStep " ++ show t ++ ":"
+        putStrLn $ "\t\tSuccess Rate: " ++ show success ++ "%"
 
-    let dones'' = T.asValue . T.squeezeAll . T.nonzero $ done :: [Int]
-        dones'  = delete' dones'' dones
-        success = realToFrac (abs (S.size dones' - numEnvs') ) / 
-                        realToFrac numEnvs' * 100.0
-
-    when (verbose && (t' `mod` 10 == 0)) do
-        putStrLn $ "\tSuccess Rate: " ++ show success ++ "%"
-
-    _   <- trackLoss tracker (episode' !! t) "Success" success
-    trackEnvState tracker addr (episode' !! t')
-    
-    eval addr tracker episode agent t' obs' dones'
+    eval addr agent t' obs' success' done'
   where
-    t'       = t + 1
-    episode' = map ((episode * horizonT + 1) +) . reverse $ range horizonT
+    t' = t + 1
 
 -- | Runs training on given Agent with Buffer
 train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int 
@@ -70,11 +61,12 @@ train addr tracker path episode buffer agent = do
     agent'   <-  updatePolicy addr tracker iter batches agent >>= saveAgent path
 
     when (iter /= 0 && iter `mod` evalFreq == 0) do
-        putStrLn "Policy Evaluation Episode"
-        dones          <- S.fromList . range <$> numEnvs addr
         (state,_,goal) <- reset addr
-        let obs        = T.cat (T.Dim 1) [state, goal]
-        eval addr tracker (episode `div` (iter + 1)) agent 0 obs dones
+        let obs   = T.cat (T.Dim 1) [state, goal]
+            iter' = iter `div` evalFreq
+        putStrLn $ "Policy Evaluation Episode " ++ show iter'
+        success   <- eval addr agent 0 obs 0.0 False
+        _         <- trackLoss tracker iter' "Success" success
         pure ()
 
     train addr tracker path episode' buffer' agent'
