@@ -51,6 +51,18 @@ data Args = Args { algorithm :: String -- ^ See ALG.Algorithm
 type Transition = (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
 
 ------------------------------------------------------------------------------
+-- ACiD
+------------------------------------------------------------------------------
+
+-- | Calculate success rate given dones and rewards
+successRate :: T.Tensor -> T.Tensor -> Float
+successRate dones rewards = rate
+  where
+    num   = realToFrac . head $ T.shape dones
+    succ' = T.logicalAnd dones $ T.ge rewards 0.0
+    rate  = T.asValue (T.sumAll succ' / num * 100.0) :: Float
+
+------------------------------------------------------------------------------
 -- Convenience / Syntactic Sugar
 ------------------------------------------------------------------------------
 
@@ -64,7 +76,7 @@ fst' (a,_,_) = a
 
 -- | Delete multiple elements from a Set
 delete' :: (Ord a) => [a] -> S.Set a -> S.Set a
-delete' elems set = S.unions $ map (`S.delete` set) elems
+delete' elems set = foldl (flip S.delete) set elems
 
 -- | Helper function creating split indices
 splits :: [Int] -> [[Int]]
