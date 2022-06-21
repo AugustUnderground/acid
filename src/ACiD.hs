@@ -15,20 +15,19 @@ import           MLFlow.Extensions
 import           ALG
 import           ALG.HyperParameters
 import           RPB
--- import qualified Data.Set            as S
 import qualified ALG.TD3             as TD3
 import qualified RPB.HER             as HER
 import qualified Torch               as T
 import qualified Torch.Extensions    as T
 
 -- | Policy evaluation Episode
-eval :: (Agent a) => CircusUrl -> a -> Int -> T.Tensor -> Float -> Bool 
-     -> IO Float
-eval _    _     _ _   success True  = pure success
-eval addr agent t obs success False = do
+eval :: (Agent a) => CircusUrl -> Tracker -> a -> Int -> Int -> T.Tensor 
+     -> Float -> Bool -> IO Float
+eval _    _       _     _       _ _   success True  = pure success
+eval addr tracker agent episode t obs success False = do
     (!state',_,!goal,!reward,!done) <- step addr $ act'' agent obs
 
-    let success' = successRate done reward
+    let success' = success + successRate done reward
         done'    = T.all done
         obs'     = T.cat (T.Dim 1) [state', goal]
     
@@ -36,9 +35,12 @@ eval addr agent t obs success False = do
         putStrLn $ "\tStep " ++ show t ++ ":"
         putStrLn $ "\t\tSuccess Rate: " ++ show success ++ "%"
 
-    eval addr agent t' obs' success' done'
+    _ <- trackLoss tracker (iter' !! t) "Success" success
+
+    eval addr tracker agent episode t' obs' success' done'
   where
-    t' = t + 1
+    t'    = t + 1
+    iter' = map ((episode * horizonT) +) $ range horizonT
 
 -- | Runs training on given Agent with Buffer
 train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int 
@@ -65,8 +67,8 @@ train addr tracker path episode buffer agent = do
         let obs   = T.cat (T.Dim 1) [state, goal]
             iter' = iter `div` evalFreq
         putStrLn $ "Policy Evaluation Episode " ++ show iter'
-        success   <- eval addr agent 0 obs 0.0 False
-        _         <- trackLoss tracker iter' "Success" success
+        success   <- eval addr tracker agent iter' 0 obs 0.0 False
+        _         <- trackLoss tracker iter' "Success_Rate" success
         pure ()
 
     train addr tracker path episode' buffer' agent'
@@ -82,10 +84,20 @@ run' addr tracker path Train TD3 HER = do
     (od,gd,_)  <- observationSpace addr
     let obsDim =  od + gd
 
-    agent       <- TD3.mkAgent obsDim actDim
-    let buffer  =  HER.empty
+    agent      <- TD3.mkAgent obsDim actDim
+    let buffer =  HER.empty
 
     train addr tracker path numEpisodes buffer agent
+run' addr tracker path Eval TD3 HER = do
+    actDim     <- actionSpace addr
+    (od,gd,_)  <- observationSpace addr
+    let obsDim =  od + gd
+    agent      <- ALG.loadAgent path obsDim actDim 0 :: IO TD3.Agent
+    (state,_,goal) <- reset addr
+    let obs   = T.cat (T.Dim 1) [state, goal]
+    success   <- eval addr tracker agent 0 0 obs 0.0 False
+    _         <- trackLoss tracker 0 "Success" success
+    pure()
 run' _    _       _    _     _   _   = error "Not Implemented"
 
 -- | Clown School
@@ -93,7 +105,9 @@ run :: Args -> IO ()
 run Args{..} = do
     nEnvs   <- numEnvs url'
     tracker <- mkTracker uri' expName >>= newRuns' nEnvs
-    path'   <- createModelArchiveDir' cpPath algorithm ace pdk var space
+    path'   <- if mode' == Train 
+                  then createModelArchiveDir' path algorithm ace pdk var space
+                  else pure path
     run' url' tracker path' mode' alg buf
   where
     alg     = read algorithm :: Algorithm
