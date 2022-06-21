@@ -51,7 +51,7 @@ data Args = Args { algorithm :: String -- ^ See ALG.Algorithm
 type Transition = (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
 
 ------------------------------------------------------------------------------
--- ACiD
+-- Evaluation
 ------------------------------------------------------------------------------
 
 -- | Calculate success rate given dones and rewards
