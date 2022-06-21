@@ -119,8 +119,8 @@ data Agent = Agent { φ      :: PolicyNet   -- ^ Online Policy φ
 instance ALG.Agent Agent where
   saveAgent      = saveAgent
   loadAgent      = loadAgent
-  act'           = act'
   act            = act
+  act'           = act'
   act''          = act''
   updatePolicy   = updatePolicy
 
@@ -172,7 +172,16 @@ loadAgent path obsDim actDim iter = do
        
         pure $ Agent fφ fφ' fθ fθ' fφOpt fθOpt
 
--- | Get action from online policy with naive / static Exploration Noise
+-- | Select an action from target policy with clipped noise
+act :: Agent -> T.Tensor -> IO T.Tensor
+act Agent{..} s = do
+    ε' <- T.toFloat <$> T.randnLikeIO a 
+    let ε = T.clamp (- c) c (ε' * σEval)
+    pure $ T.clamp actionLow actionHigh (a + ε)
+  where
+    a = π φ' s
+
+-- | Select action from online policy with Exploration Noise
 act' :: Agent -> T.Tensor -> IO T.Tensor
 act' Agent{..} s = do
     ε <- T.toFloat <$> T.randnLikeIO a
@@ -182,18 +191,9 @@ act' Agent{..} s = do
     s' = T.toDevice T.gpu s
     a = π φ s'
 
--- | Get an action with clipped noise
-act :: Agent -> T.Tensor -> IO T.Tensor
-act Agent{..} s = do
-    ε' <- T.toFloat <$> T.randnLikeIO a 
-    let ε = T.clamp (- c) c (ε' * σEval)
-    pure $ T.clamp actionLow actionHigh (a + ε)
-  where
-    a = π φ' s
-
--- | Get an action without any noise
+-- | Select an action from online policy without any noise
 act'' :: Agent -> T.Tensor -> T.Tensor
-act'' Agent{..} = T.toDevice T.cpu . π φ' . T.toDevice T.gpu
+act'' Agent{..} = T.toDevice T.cpu . π φ . T.toDevice T.gpu
 
 -- | Policy Update Step
 updateStep :: Int -> Int -> Agent -> Tracker -> Transition -> IO Agent
