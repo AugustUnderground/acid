@@ -27,9 +27,9 @@ import qualified Torch.Extensions   as T
 ------------------------------------------------------------------------------
 
 -- | Run Mode
-data Mode = Train       -- ^ Start Agent Training
-          | Continue    -- ^ Continue Agent Training
-          | Evaluate    -- ^ Evaluate Agent
+data Mode = Train   -- ^ Start Agent Training
+          | Cont    -- ^ Continue Agent Training
+          | Eval    -- ^ Evaluate Agent
           deriving (Eq, Show, Read)
 
 -- | Command Line Arguments
@@ -41,7 +41,7 @@ data Args = Args { algorithm :: String -- ^ See ALG.Algorithm
                  , pdk       :: String -- ^ ACE PDK
                  , space     :: String -- ^ Design / Action Space
                  , var       :: String -- ^ (Non-)Goal Environment
-                 , cpPath    :: String -- ^ Checkpoint Base Path
+                 , path      :: String -- ^ Checkpoint Base Path
                  , mlfHost   :: String -- ^ MLFlow Server Host Address
                  , mlfPort   :: String -- ^ MLFlow Server Port
                  , mode      :: String -- ^ Run Mode
