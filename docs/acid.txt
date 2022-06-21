@@ -122,10 +122,10 @@ data Mode
 Train :: Mode
 
 -- | Continue Agent Training
-Continue :: Mode
+Cont :: Mode
 
 -- | Evaluate Agent
-Evaluate :: Mode
+Eval :: Mode
 
 -- | Command Line Arguments
 data Args
@@ -156,7 +156,7 @@ Args :: String -> String -> String -> String -> String -> String -> String -> St
 [var] :: Args -> String
 
 -- | Checkpoint Base Path
-[cpPath] :: Args -> String
+[path] :: Args -> String
 
 -- | MLFlow Server Host Address
 [mlfHost] :: Args -> String
@@ -169,6 +169,9 @@ Args :: String -> String -> String -> String -> String -> String -> String -> St
 
 -- | Type Alias for Transition Tuple (state, action, reward, state', done)
 type Transition = (Tensor, Tensor, Tensor, Tensor, Tensor)
+
+-- | Calculate success rate given dones and rewards
+successRate :: Tensor -> Tensor -> Float
 
 -- | Range from 0 to n - 1
 range :: Int -> [Int]
@@ -853,7 +856,7 @@ instance Torch.NN.Randomizable ALG.TD3.PolicyNetSpec ALG.TD3.PolicyNet
 module ACiD
 
 -- | Policy evaluation Episode
-eval :: Agent a => CircusUrl -> Tracker -> Int -> a -> Int -> Tensor -> Set Int -> IO ()
+eval :: Agent a => CircusUrl -> Tracker -> a -> Int -> Int -> Tensor -> Float -> Bool -> IO Float
 
 -- | Runs training on given Agent with Buffer
 train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int -> b Tensor -> a -> IO ()
