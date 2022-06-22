@@ -27,9 +27,9 @@ eval meta@Meta{..} hp addr tracker agent episode t obs dones | T.all dones = pur
                                                              | otherwise   = do
     (!state',_,!goal,!reward,!done) <- step addr $ act'' agent obs
 
-    let dones'  = T.logicalOr dones . T.logicalAnd done $ T.ge reward 0.0
+    let dones'  = T.logicalOr done dones
         obs'    = T.cat (T.Dim 1) [state', goal]
-        success = successRate dones'
+        success = successRate . T.logicalOr dones . T.logicalAnd done $ T.ge reward 0.0
     
     when (verbose && t % 10 == 0) do
         putStrLn $ "\tStep " ++ show t ++ ":"
