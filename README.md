@@ -22,7 +22,7 @@ $ stack exec -- acid-exe -c ./config/td3.yaml
 
 Here is the short help for the CLI and available options:
 
-```bash
+```
 ACiD
 
 Usage: acid-exe [-H|--circus-host HOST] [-P|--circus-port PORT] [-f|--path FILE]
