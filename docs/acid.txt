@@ -646,155 +646,136 @@ evalFreq :: Int
 k :: Int
 
 
--- | YAML Configurations
+-- | YAML Configuration Parser
 module CFG
 
 -- | Read a Tensor from float
 read' :: Float -> Maybe Tensor
 
+-- | Read a Tensor from float
+read'' :: Float -> Maybe Tensor
+
 -- | Decode / Parse ByteString to Meta
-parseConfig' :: ByteString -> Config
+parseConfig' :: ByteString -> Params
 
--- | Decode / Parse Config File
-parseConfig :: FilePath -> IO Config
+-- | Decode / Parse Params File
+parseConfig :: FilePath -> IO Params
 
--- | YAML Config File
-data Config
-Config :: Meta -> HyperParameters -> Config
-
--- | Meta Information
-[meta] :: Config -> Meta
-
--- | Hyper Parameters
-[hyperParameters] :: Config -> HyperParameters
-
--- | Meta Information
-data Meta
-Meta :: Bool -> Int -> Int -> Int -> Algorithm -> ReplayMemory -> Circuit -> PDK -> Space -> Int -> Meta
+-- | Configuration Parameters Information
+data Params
+Params :: Bool -> Int -> Int -> Int -> Algorithm -> ReplayMemory -> Circuit -> PDK -> Space -> Int -> Int -> Float -> Tensor -> Tensor -> Int -> Float -> Float -> Tensor -> Tensor -> Float -> Int -> Float -> Tensor -> Tensor -> Float -> Float -> Float -> Int -> Strategy -> Float -> Float -> Int -> Int -> Int -> Int -> Int -> Params
 
 -- | Print verbose debug output
-[verbose] :: Meta -> Bool
+[verbose] :: Params -> Bool
 
 -- | Random seed for reproducibility
-[rngSeed] :: Meta -> Int
+[rngSeed] :: Params -> Int
 
 -- | Number of episodes to play
-[numEpisodes] :: Meta -> Int
+[numEpisodes] :: Params -> Int
 
 -- | Maximum Number of Steps per Episode
-[horizonT] :: Meta -> Int
+[horizonT] :: Params -> Int
 
 -- | ACiD Algorithm ID
-[algorithm] :: Meta -> Algorithm
+[algorithm] :: Params -> Algorithm
 
 -- | ACiD Buffer ID
-[buffer] :: Meta -> ReplayMemory
+[buffer] :: Params -> ReplayMemory
 
 -- | ACE Single-Ended OpAmp ID
-[aceId] :: Meta -> Circuit
+[aceId] :: Params -> Circuit
 
 -- | ACE Backend / PDK
-[aceBackend] :: Meta -> PDK
+[aceBackend] :: Params -> PDK
 
 -- | Design / Action Space
-[space] :: Meta -> Space
+[space] :: Params -> Space
 
 -- | Environment Variant
-[variant] :: Meta -> Int
-
--- | Hyper Parameters
-data HyperParameters
-HyperParameters :: Int -> Float -> Tensor -> Tensor -> Int -> Float -> Float -> Tensor -> Tensor -> Float -> Int -> Float -> Tensor -> Tensor -> Float -> Float -> Float -> Int -> Strategy -> Float -> Float -> Int -> Int -> Int -> Int -> Int -> HyperParameters
+[variant] :: Params -> Int
 
 -- | Policy and Target Update Delay
-[d] :: HyperParameters -> Int
+[d] :: Params -> Int
 
 -- | Noise clipping
-[c] :: HyperParameters -> Float
+[c] :: Params -> Float
 
 -- | Discount Factor (Tensor)
-[γ] :: HyperParameters -> Tensor
+[γ] :: Params -> Tensor
 
 -- | Soft Update coefficient ("polyak") τ ∈ [0,1]
-[τ] :: HyperParameters -> Tensor
+[τ] :: Params -> Tensor
 
 -- | Decay Period
-[decay] :: HyperParameters -> Int
+[decay] :: Params -> Int
 
 -- | Noise Clipping Minimum
-[σMin] :: HyperParameters -> Float
+[σMin] :: Params -> Float
 
 -- | Noise Clipping Maximum
-[σMax] :: HyperParameters -> Float
+[σMax] :: Params -> Float
 
 -- | Evaluation Noise standard deviation (σ~) (Tensor)
-[σEval] :: HyperParameters -> Tensor
+[σEval] :: Params -> Tensor
 
 -- | Action Noise standard deviation (Tensor)
-[σAct] :: HyperParameters -> Tensor
+[σAct] :: Params -> Tensor
 
 -- | Noise Clipping
-[σClip] :: HyperParameters -> Float
+[σClip] :: Params -> Float
 
 -- | Number of units per hidden layer
-[hidDim] :: HyperParameters -> Int
+[hidDim] :: Params -> Int
 
 -- | Initial weights
-[wInit] :: HyperParameters -> Float
+[wInit] :: Params -> Float
 
 -- | Actor Learning Rate (Tensor)
-[ηφ] :: HyperParameters -> Tensor
+[ηφ] :: Params -> Tensor
 
 -- | Critic Learning Rate (Tensor)
-[ηθ] :: HyperParameters -> Tensor
+[ηθ] :: Params -> Tensor
 
 -- | ADAM Hyper Parameter β1
-[β1] :: HyperParameters -> Float
+[β1] :: Params -> Float
 
 -- | ADAM Hyper Parameter β2
-[β2] :: HyperParameters -> Float
+[β2] :: Params -> Float
 
 -- | Leaky ReLU Slope
-[lreluSlope] :: HyperParameters -> Float
+[lreluSlope] :: Params -> Float
 
 -- | Number of Additional Targets to sample
-[k] :: HyperParameters -> Int
+[k] :: Params -> Int
 
 -- | Goal Sampling Strategy
-[strategy] :: HyperParameters -> Strategy
+[strategy] :: Params -> Strategy
 
 -- | Action space lower bound
-[actionLow] :: HyperParameters -> Float
+[actionLow] :: Params -> Float
 
 -- | Action space upper bound
-[actionHigh] :: HyperParameters -> Float
+[actionHigh] :: Params -> Float
 
 -- | Number of epochs to train
-[numEpochs] :: HyperParameters -> Int
+[numEpochs] :: Params -> Int
 
 -- | Frequency of random exploration episodes
-[explFreq] :: HyperParameters -> Int
+[explFreq] :: Params -> Int
 
 -- | Frequency of random exploration episodes
-[evalFreq] :: HyperParameters -> Int
+[evalFreq] :: Params -> Int
 
 -- | Replay Buffer Size
-[bufferSize] :: HyperParameters -> Int
+[bufferSize] :: Params -> Int
 
 -- | Mini batch size
-[batchSize] :: HyperParameters -> Int
-instance GHC.Show.Show CFG.Meta
-instance GHC.Generics.Generic CFG.Meta
-instance GHC.Show.Show CFG.HyperParameters
-instance GHC.Generics.Generic CFG.HyperParameters
-instance GHC.Show.Show CFG.Config
-instance GHC.Generics.Generic CFG.Config
-instance Data.Aeson.Types.FromJSON.FromJSON CFG.Config
-instance Data.Aeson.Types.ToJSON.ToJSON CFG.Config
-instance Data.Aeson.Types.FromJSON.FromJSON CFG.HyperParameters
-instance Data.Aeson.Types.ToJSON.ToJSON CFG.HyperParameters
-instance Data.Aeson.Types.FromJSON.FromJSON CFG.Meta
-instance Data.Aeson.Types.ToJSON.ToJSON CFG.Meta
+[batchSize] :: Params -> Int
+instance GHC.Show.Show CFG.Params
+instance GHC.Generics.Generic CFG.Params
+instance Data.Aeson.Types.FromJSON.FromJSON CFG.Params
+instance Data.Aeson.Types.ToJSON.ToJSON CFG.Params
 
 
 -- | General Replay Buffer Types and TypeClasses
@@ -807,7 +788,7 @@ class Agent a
 saveAgent :: Agent a => FilePath -> a -> IO a
 
 -- | Load an agent saved at a Path
-loadAgent :: Agent a => HyperParameters -> FilePath -> Int -> Int -> Int -> IO a
+loadAgent :: Agent a => Params -> FilePath -> Int -> Int -> Int -> IO a
 
 -- | Take an action to the best Ability
 act :: Agent a => a -> Tensor -> IO Tensor
@@ -819,7 +800,7 @@ act' :: Agent a => a -> Tensor -> IO Tensor
 act'' :: Agent a => a -> Tensor -> Tensor
 
 -- | Update Policy
-updatePolicy :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a
+updatePolicy :: Agent a => Params -> CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a
 
 
 -- | General Replay Buffer Types and TypeClasses
@@ -844,7 +825,7 @@ sampleIO :: ReplayBuffer b => Int -> b Tensor -> IO (b Tensor)
 asTuple :: ReplayBuffer b => b Tensor -> (Tensor, Tensor, Tensor, Tensor, Tensor)
 
 -- | Collect Experiences in Buffer
-collectExperience :: (ReplayBuffer b, Agent a) => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> a -> IO (b Tensor)
+collectExperience :: (ReplayBuffer b, Agent a) => Params -> CircusUrl -> Tracker -> Int -> a -> IO (b Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
 randomBatches :: ReplayBuffer b => Int -> Int -> b Tensor -> IO [Transition]
@@ -890,10 +871,10 @@ sampleIO' :: Int -> Buffer Tensor -> IO (Buffer Tensor)
 asTuple' :: Buffer Tensor -> Transition
 
 -- | Evaluate Policy for T steps and return experience Buffer
-collectStep :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> Int -> a -> Tensor -> Buffer Tensor -> IO (Buffer Tensor)
+collectStep :: Agent a => Params -> CircusUrl -> Tracker -> Int -> Int -> a -> Tensor -> Buffer Tensor -> IO (Buffer Tensor)
 
 -- | Collect experience for a given number of steps
-collectExperience' :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> a -> IO (Buffer Tensor)
+collectExperience' :: Agent a => Params -> CircusUrl -> Tracker -> Int -> a -> IO (Buffer Tensor)
 instance GHC.Classes.Eq a => GHC.Classes.Eq (RPB.Buffer a)
 instance GHC.Show.Show a => GHC.Show.Show (RPB.Buffer a)
 instance GHC.Base.Functor RPB.Buffer
@@ -1024,7 +1005,7 @@ Agent :: PolicyNet -> PolicyNet -> CriticNet -> CriticNet -> Adam -> Adam -> Flo
 [c'] :: Agent -> Float
 
 -- | Agent constructor
-mkAgent :: HyperParameters -> Int -> Int -> IO Agent
+mkAgent :: Params -> Int -> Int -> IO Agent
 
 -- | Save an Agent and return the agent
 saveAgent' :: FilePath -> Agent -> IO ()
@@ -1049,13 +1030,13 @@ instance Torch.NN.Randomizable ALG.TD3.PolicyNetSpec ALG.TD3.PolicyNet
 module ACiD
 
 -- | Policy evaluation Episode
-eval :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> a -> Int -> Int -> Tensor -> Tensor -> IO ()
+eval :: Agent a => Params -> CircusUrl -> Tracker -> a -> Int -> Int -> Tensor -> Tensor -> IO ()
 
 -- | Runs training on given Agent with Buffer
-train :: (Agent a, ReplayBuffer b) => Meta -> HyperParameters -> CircusUrl -> Tracker -> String -> Int -> b Tensor -> a -> IO ()
+train :: (Agent a, ReplayBuffer b) => Params -> CircusUrl -> Tracker -> String -> Int -> b Tensor -> a -> IO ()
 
 -- | Create Agent and Buffer, then run training
-run' :: Meta -> HyperParameters -> CircusUrl -> Tracker -> String -> Mode -> Algorithm -> ReplayMemory -> IO ()
+run' :: Params -> CircusUrl -> Tracker -> String -> Mode -> Algorithm -> ReplayMemory -> IO ()
 
 -- | Clown School
 run :: Args -> IO ()
