@@ -29,8 +29,9 @@ library
   exposed-modules:
       ACiD
       ALG
-      ALG.HyperParameters
       ALG.TD3
+      CFG
+      CFG.Default
       CKT
       Lib
       MLFlow.Extensions
@@ -58,6 +59,7 @@ library
     , optparse-applicative
     , time
     , wreq
+    , yaml
   default-language: Haskell2010
 
 executable acid-exe
@@ -83,6 +85,7 @@ executable acid-exe
     , optparse-applicative
     , time
     , wreq
+    , yaml
   default-language: Haskell2010
 
 test-suite acid-test
@@ -111,4 +114,5 @@ test-suite acid-test
     , optparse-applicative
     , time
     , wreq
+    , yaml
   default-language: Haskell2010

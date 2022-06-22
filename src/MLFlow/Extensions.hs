@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
-{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE BlockArguments  #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | ACiD Specific Extensions to the mlflow-hs package

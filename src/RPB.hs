@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
-{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE BlockArguments    #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 -- | General Replay Buffer Types and TypeClasses
@@ -12,18 +13,10 @@ import           Control.Monad
 import           MLFlow.Extensions
 import           Lib
 import           CKT                 hiding (url)
+import           CFG                 hiding (d)
 import           ALG
-import           ALG.HyperParameters hiding (d)
 import qualified Torch               as T
 import qualified Torch.Extensions    as T
-
--- | Available Replay Buffer Types
-data ReplayMemory = RPB -- ^ Vanilla Replay Buffer
-                  | PER -- ^ Prioritized Experience Replay
-                  | MEM -- ^ PPO Style replay Memory
-                  | ERE -- ^ Emphasizing Recent Experience
-                  | HER -- ^ Hindsight Experience Replay
-                  deriving (Eq, Show, Read)
 
 -- | Replay Buffer Interface
 class (Functor b) => ReplayBuffer b where
@@ -38,19 +31,19 @@ class (Functor b) => ReplayBuffer b where
   -- | Return the Tuple: (s, a, r, s', d) for training
   asTuple  :: b T.Tensor -> (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
   -- | Collect Experiences in Buffer
-  collectExperience :: (Agent a) => CircusUrl -> Tracker -> Int -> a 
-                    -> IO (b T.Tensor)
+  collectExperience :: (Agent a) => Meta -> HyperParameters -> CircusUrl 
+                    -> Tracker -> Int -> a -> IO (b T.Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
 randomBatches :: (ReplayBuffer b) => Int -> Int -> b T.Tensor -> IO [Transition]
-randomBatches nb bs buffer = do
+randomBatches nb bs buf = do
     idx <-  (map T.asValue . T.split bs (T.Dim 0) 
                     <$> T.multinomialIO (T.ones' [bl]) num rpl
             ) :: IO [[Int]]
 
-    pure $ map (asTuple . (`lookUp` buffer)) idx
+    pure $ map (asTuple . (`lookUp` buf)) idx
   where
-    bl  = size buffer
+    bl  = size buf
     num = nb * bs
     rpl = num > bl
 
@@ -135,12 +128,13 @@ asTuple' :: Buffer T.Tensor -> Transition
 asTuple' (Buffer s a r n d) = (s,a,r,n,d)
 
 -- | Evaluate Policy for T steps and return experience Buffer
-collectStep :: (Agent a) => CircusUrl -> Tracker -> Int -> Int -> a -> T.Tensor 
-            -> Buffer T.Tensor -> IO (Buffer T.Tensor)
-collectStep _   _       _    0 _     _ buf = pure buf
-collectStep url tracker iter t agent s buf = do
+collectStep :: (Agent a) => Meta -> HyperParameters -> CircusUrl -> Tracker 
+            -> Int -> Int -> a -> T.Tensor -> Buffer T.Tensor 
+            -> IO (Buffer T.Tensor)
+collectStep _ _ _   _       _    0 _     _ buf = pure buf
+collectStep meta'@Meta{..} hp@HyperParameters{..} url tracker iter t agent s buf = do
     p <- (iter *) <$> numEnvs url
-    a <- if p `mod` explFreq == 0
+    a <- if p % explFreq == 0
             then randomAction url
             else act' agent s >>= T.detach
     
@@ -153,19 +147,19 @@ collectStep url tracker iter t agent s buf = do
     
     s_ <- if T.any d then fst3 <$> reset' url d else pure s'
 
-    when (verbose && iter `mod` 10 == 0) do
+    when (verbose && iter % 10 == 0) do
         putStrLn $ "\tAverage Reward: \t" ++ show (T.mean r)
 
-    collectStep url tracker iter t' agent s_ buf'
+    collectStep meta' hp url tracker iter t' agent s_ buf'
   where
     iter' = [(iter * horizonT) .. (iter * 2 * horizonT + 1)]
     t'     = t - 1
 
 -- | Collect experience for a given number of steps
-collectExperience' :: (Agent a) => CircusUrl -> Tracker -> Int -> a 
-                   -> IO (Buffer T.Tensor)
-collectExperience' url tracker iter agent = do
+collectExperience' :: (Agent a) => Meta -> HyperParameters -> CircusUrl 
+                   -> Tracker -> Int -> a -> IO (Buffer T.Tensor)
+collectExperience' meta'@Meta{..} hp url tracker iter agent = do
     (obs, _, _) <- reset url
-    collectStep url tracker iter horizonT agent obs buffer
+    collectStep meta' hp url tracker iter horizonT agent obs buf
   where
-    buffer = empty
+    buf = empty

@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE TypeApplications    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Extensions to Torch

@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE BlockArguments    #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -49,7 +50,7 @@ import qualified Torch                 as T
 data Circuit = OP1 -- ^ Miller Amplifier (op1)
              | OP2 -- ^ Symmetrical Amplifier (op2)
              | OP8 -- ^ Folded Cascode (op8)
-    deriving (Eq)
+    deriving (Eq, Generic, FromJSON, ToJSON)
 
 instance Show Circuit where
   show OP1 = "op1"
@@ -65,7 +66,7 @@ instance Read Circuit where
 -- | Available PDKs
 data PDK = XH035 -- ^ X-Fab XH035 350nm Process
          | XH018 -- ^ X-Fab XH018 180nm Process
-    deriving (Eq)
+    deriving (Eq, Generic, FromJSON, ToJSON)
 
 instance Show PDK where
   show XH035 = "xh035"
@@ -79,7 +80,7 @@ instance Read PDK where
 -- | Available Design / Action Spaces
 data Space = Electric  -- ^ Electric Design Space
            | Geometric -- ^ Geometric Design Space
-    deriving (Eq)
+    deriving (Eq, Generic, FromJSON, ToJSON)
 
 instance Show Space where
   show Electric  = "elec"

@@ -1,11 +1,11 @@
 {-# OPTIONS_GHC -Wall #-}
 
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE BangPatterns      #-}
+{-# LANGUAGE BlockArguments    #-}
+{-# LANGUAGE KindSignatures    #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 -- | Hindsight Experience Replay
@@ -17,13 +17,12 @@ module RPB.HER ( Strategy (..)
                , sampleGoals
                ) where
 
-import qualified RPB
 import           Lib
-import           CKT                            hiding (url)
-import           MLFlow.Extensions
+import qualified RPB
 import           ALG
-import           ALG.HyperParameters            hiding (d)
-
+import           CKT                            hiding (url)
+import           CFG                            hiding (d)
+import           MLFlow.Extensions
 import           Control.Monad
 import           Control.Applicative            hiding (empty)
 import           Prelude                        hiding (drop)
@@ -33,13 +32,6 @@ import qualified Torch.Extensions          as T
 ------------------------------------------------------------------------------
 -- Hindsight Experience Replay
 ------------------------------------------------------------------------------
-
--- | Hindsight Experience Replay Strategies for choosing Goals
-data Strategy = Final   -- ^ Only Final States are additional targets
-              | Random  -- ^ Replay with `k` random states encountered so far (basically vanilla)
-              | Episode -- ^ Replay with `k` random states from same episode.
-              | Future  -- ^ Replay with `k` random states from same episode, that were observed after
-  deriving (Show, Eq)
 
 -- | Strict Simple/Naive Replay Buffer
 data Buffer a = Buffer { states  :: !a   -- ^ States
@@ -200,11 +192,14 @@ sampleGoals url Future k' buf | k' >= bs  = pure buf
     opts       = T.withDType T.Int32 . T.withDevice T.cpu $ T.defaultOpts
 
 -- | Evaluate Policy for T steps and return experience Buffer
-collectStep :: (Agent a) => CircusUrl -> Tracker -> Int -> Int -> a -> T.Tensor 
-            -> T.Tensor -> Buffer T.Tensor -> IO (Buffer T.Tensor)
-collectStep url _       _    0 _     _ _ buf = sampleGoals url Future k buf
-collectStep url tracker iter t agent s g buf = do
-    a <- if iter `mod` explFreq == 0
+collectStep :: (Agent a) => Meta -> HyperParameters -> CircusUrl -> Tracker 
+            -> Int -> Int -> a -> T.Tensor -> T.Tensor -> Buffer T.Tensor 
+            -> IO (Buffer T.Tensor)
+collectStep _              HyperParameters{..}  url _       _    0 _     _ _ buf 
+        = sampleGoals url Future k buf
+collectStep meta'@Meta{..} hp@HyperParameters{..} url tracker iter t agent s g buf 
+        = do
+    a <- if iter % explFreq == 0
             then randomAction url
             else act' agent obs >>= T.detach
 
@@ -217,7 +212,7 @@ collectStep url tracker iter t agent s g buf = do
 
     (!s',_,!g') <- if T.any d then reset' url d else pure (n, ag, dg)
 
-    when (verbose && (iter' !! t') `mod` 10 == 0) do
+    when (verbose && (iter' !! t') % 10 == 0) do
         putStrLn $ "\tStep " ++ show (iter' !! t') ++ ":"
         putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean . rewards $ buf')
 
@@ -226,18 +221,18 @@ collectStep url tracker iter t agent s g buf = do
         putStrLn $ "\t\tDone with: " ++ show ds ++ "\n\t\t\tAfter " 
                     ++  show (iter' !! t') ++ " steps."
 
-    collectStep url tracker iter t' agent s' g' buf'
+    collectStep meta' hp url tracker iter t' agent s' g' buf'
   where
     obs = T.cat (T.Dim 1) [s, g]
     iter' = map ((iter * horizonT + 1) +) . reverse $ range horizonT
     t'    = t - 1
 
 -- | Collect experience for a given number of steps
-collectExperience :: (Agent a) => CircusUrl -> Tracker -> Int -> a 
-                   -> IO (Buffer T.Tensor)
-collectExperience url tracker iter agent = do
+collectExperience :: (Agent a) => Meta -> HyperParameters -> CircusUrl 
+                  -> Tracker -> Int -> a -> IO (Buffer T.Tensor)
+collectExperience meta'@Meta{..} hp url tracker iter agent = do
     (s,_,g) <- reset url
     trackEnvState tracker url (iter * horizonT)
-    collectStep url tracker iter horizonT agent s g buffer
+    collectStep meta' hp url tracker iter horizonT agent s g buf
   where
-    buffer = empty
+    buf = empty

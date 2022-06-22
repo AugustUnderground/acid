@@ -1,0 +1,52 @@
+# ACiD Config Files have a trivial Structure:
+# HyperParameter: Value
+#
+# Hyper Parameters for TD3 + HER
+
+##############################################################################
+##  General Settings / Meta Information
+##############################################################################
+
+meta:
+  verbose:      true     # Print verbose debug output
+  rng-seed:     666      # Random seed for reproducibility
+  num-episodes: 50       # Number of episodes to play
+  horizon:      50       # Maximum Number of Steps per Episode
+  algorithm:    TD3      # ACiD Algorithm ID
+  buffer:       HER      # ACiD Buffer ID
+  ace-id:       OP2      # ACE Single-Ended OpAmp ID
+  ace-backend:  XH035    # ACE Backend / PDK
+  space:        Electric # Design / Action Space
+  variant:      0        # Environment Variant
+
+##############################################################################
+##  Hyper Parameters
+##############################################################################
+
+hyper-parameters:
+  d:           2      # Policy and Target Update Delay
+  c:           0.5    # Noise clipping
+  γ:           0.99   # Discount Factor (Tensor)
+  τ:           5.0e-3 # Soft Update coefficient ("polyak") τ ∈ [0,1]
+  decay:       1.0e5  # Decay Period
+  σ-min:       1.0    # Noise Clipping Minimum
+  σ-max:       1.0    # Noise Clipping Maximum
+  σ-eval:      0.2    # Evaluation Noise standard deviation (σ~) (Tensor)
+  σ-act:       0.1    # Action Noise standard deviation (Tensor)
+  σ-clip:      0.5    # Noise Clipping
+  hidden-dim:  256    # Number of units per hidden layer
+  w-init:      3.0e-4 # Initial weights
+  ηφ:          1.0e-3 # Actor Learning Rate (Tensor)
+  ηθ:          1.0e-3 # Critic Learning Rate (Tensor)
+  β1:          0.9    # ADAM Hyper Parameter β1
+  β2:          0.99   # ADAM Hyper Parameter β2
+  lrelu-slope: 0.01   # Leaky ReLU Slope
+  k:           4      # Number of Additional Targets to sample
+  strategy:    Future # Goal Sampling Strategy
+  action-low:  -1.0   # Action space lower bound
+  action-high: 1.0    # Action space upper bound
+  num-epochs:  40     # Number of epochs to train
+  expl-freq:   10     # Frequency of random exploration episodes
+  eval-freq:   5      # Frequency of random exploration episodes
+  buffer-size: 1.0e6  # Replay Buffer Size
+  batch-size:  256    # Mini batch size

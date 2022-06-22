@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE BangPatterns    #-}
+{-# LANGUAGE BlockArguments  #-}
 {-# LANGUAGE RecordWildCards #-}
 
 -- | Artificial Circuit Designer
@@ -10,10 +10,10 @@ module ACiD where
 import           Control.Monad
 import           Lib
 import           CKT
+import           CFG
 import           MLFlow
 import           MLFlow.Extensions
 import           ALG
-import           ALG.HyperParameters
 import           RPB
 import qualified ALG.TD3             as TD3
 import qualified RPB.HER             as HER
@@ -21,100 +21,115 @@ import qualified Torch               as T
 import qualified Torch.Extensions    as T
 
 -- | Policy evaluation Episode
-eval :: (Agent a) => CircusUrl -> Tracker -> a -> Int -> Int -> T.Tensor 
-     -> Float -> Bool -> IO Float
-eval _    _       _     _       _ _   success True  = pure success
-eval addr tracker agent episode t obs success False = do
+eval :: (Agent a) => Meta -> HyperParameters -> CircusUrl -> Tracker -> a 
+     -> Int -> Int -> T.Tensor -> T.Tensor -> IO ()
+eval meta@Meta{..} hp addr tracker agent episode t obs dones | T.all dones = pure ()
+                                                             | otherwise   = do
     (!state',_,!goal,!reward,!done) <- step addr $ act'' agent obs
 
-    let success' = success + successRate done reward
-        done'    = T.all done
-        obs'     = T.cat (T.Dim 1) [state', goal]
+    let dones'  = T.logicalOr dones . T.logicalAnd done $ T.ge reward 0.0
+        obs'    = T.cat (T.Dim 1) [state', goal]
+        success = successRate dones'
     
-    when (verbose && t `mod` 10 == 0) do
+    when (verbose && t % 10 == 0) do
         putStrLn $ "\tStep " ++ show t ++ ":"
-        putStrLn $ "\t\tSuccess Rate: " ++ show success' ++ "%"
+        putStrLn $ "\t\tSuccess Rate: " ++ show success ++ "%"
 
-    _ <- trackLoss tracker (iter' !! t) "Success" success'
+    _ <- trackLoss tracker (iter' !! t) "Success" success
 
-    eval addr tracker agent episode t' obs' success' done'
+    eval meta hp addr tracker agent episode t' obs' dones'
   where
     t'    = t + 1
-    iter' = map ((episode * horizonT) +) $ range horizonT
+    iter' = map ((episode * horizonT) +) [0..]
 
 -- | Runs training on given Agent with Buffer
-train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int 
-      -> b T.Tensor -> a -> IO ()
-train _    _       path 0       _      agent = void $ saveAgent path agent
-train addr tracker path episode buffer agent = do
+train :: (Agent a, ReplayBuffer b) => Meta -> HyperParameters -> CircusUrl 
+      -> Tracker -> String -> Int -> b T.Tensor -> a -> IO ()
+train _ _ _    _       path 0       _      agent = void $ saveAgent path agent
+train meta@Meta{..} hp@HyperParameters{..} addr tracker path episode buf agent = do
 
     when verbose do
-        let isRandom = if iter `mod` explFreq == 0 
+        let isRandom = if iter % explFreq == 0 
                           then "Random Exploration" 
                           else "Policy Exploitation"
         putStrLn $ "Episode " ++ show iter ++ " (" ++ isRandom ++ "):"
 
-    buffer'  <-  push bufferSize buffer 
-             <$> collectExperience addr tracker iter agent
+    buf'  <-  push bufferSize buf 
+             <$> collectExperience meta hp addr tracker iter agent
 
     batches  <-  map (tmap (T.toDevice T.gpu)) 
-             <$> randomBatches numEpochs batchSize buffer'
+             <$> randomBatches numEpochs batchSize buf'
 
-    agent'   <-  updatePolicy addr tracker iter batches agent >>= saveAgent path
+    agent'   <-  updatePolicy meta hp addr tracker iter batches agent 
+                    >>= saveAgent path
 
-    when (iter /= 0 && iter `mod` evalFreq == 0) do
+    when (iter /= 0 && iter % evalFreq == 0) do
         (state,_,goal) <- reset addr
-        let obs   = T.cat (T.Dim 1) [state, goal]
-            iter' = iter `div` evalFreq
+        let obs      = T.cat (T.Dim 1) [state, goal]
+            iter'    = iter // evalFreq
+            success' = T.full [head $ T.shape obs] False 
+                     $ T.withDType T.Bool T.defaultOpts
         putStrLn $ "Policy Evaluation Episode " ++ show iter'
-        success   <- eval addr tracker agent iter' 0 obs 0.0 False
-        _         <- trackLoss tracker iter' "Success_Rate" success
+        eval meta hp addr tracker agent' iter' 0 obs success'
         pure ()
 
-    train addr tracker path episode' buffer' agent'
+    train meta hp addr tracker path episode' buf' agent'
   where
-    episode' =   episode - 1
-    iter     =   numEpisodes - episode
+    episode' = episode - 1
+    iter     = numEpisodes - episode
 
 -- | Create Agent and Buffer, then run training
-run' :: CircusUrl -> Tracker -> String -> Mode -> Algorithm -> ReplayMemory 
-    -> IO ()
-run' addr tracker path Train TD3 HER = do
+run' :: Meta -> HyperParameters -> CircusUrl -> Tracker -> String -> Mode 
+     -> Algorithm -> ReplayMemory -> IO ()
+run' meta@Meta{..} hp addr tracker path Train TD3 HER = do
     actDim     <- actionSpace addr
     (od,gd,_)  <- observationSpace addr
     let obsDim =  od + gd
+        buf    =  HER.empty
 
-    agent      <- TD3.mkAgent obsDim actDim
-    let buffer =  HER.empty
-
-    train addr tracker path numEpisodes buffer agent
-run' addr tracker path Eval TD3 HER = do
+    TD3.mkAgent hp obsDim actDim >>= train meta hp addr tracker path numEpisodes buf
+run' meta hp addr tracker path Eval TD3 HER = do
     actDim     <- actionSpace addr
     (od,gd,_)  <- observationSpace addr
     let obsDim =  od + gd
-    agent      <- ALG.loadAgent path obsDim actDim 0 :: IO TD3.Agent
+    agent      <- ALG.loadAgent hp path obsDim actDim 0 :: IO TD3.Agent
     (state,_,goal) <- reset addr
-    let obs   = T.cat (T.Dim 1) [state, goal]
-    success   <- eval addr tracker agent 0 0 obs 0.0 False
-    _         <- trackLoss tracker 0 "Success" success
+    let obs      = T.cat (T.Dim 1) [state, goal]
+        success' = T.full [head $ T.shape obs] False 
+                 $ T.withDType T.Bool T.defaultOpts
+    eval meta hp addr tracker agent 0 0 obs success'
     pure()
-run' _    _       _    _     _   _   = error "Not Implemented"
+run' _    _  _    _       _    _     _   _  = error "Not Implemented"
 
 -- | Clown School
 run :: Args -> IO ()
 run Args{..} = do
-    nEnvs   <- numEnvs url'
-    tracker <- mkTracker uri' expName >>= newRuns' nEnvs
+    config' <- parseConfig config
+
+    let alg = show . algorithm  . meta $ config'
+        buf = show . buffer     . meta $ config'
+        ace = show . aceId      . meta $ config'
+        pdk = show . aceBackend . meta $ config'
+        var = show . variant    . meta $ config'
+        spc = show . space      . meta $ config'
+
     path'   <- if mode' == Train 
-                  then createModelArchiveDir' path algorithm ace pdk var space
+                  then createModelArchiveDir' path alg ace pdk var spc
                   else pure path
-    run' url' tracker path' mode' alg buf
+
+    let url' = url cktHost cktPort ace pdk spc var
+        uri' = trackingURI mlfHost mlfPort
+        alg' = algorithm . meta $ config'
+        buf' = buffer    . meta $ config'
+        exp' = alg ++ "-" ++ buf ++ "-" ++ ace ++ "-" ++ pdk
+                   ++ "-" ++ spc ++ "-v" ++ var ++ "-" ++ mode
+    
+    nEnvs   <- numEnvs url'
+    tracker <- mkTracker uri' exp' >>= newRuns' nEnvs
+
+    let meta' = meta config'
+        hp    = hyperParameters config'
+    
+    run' meta' hp url' tracker path' mode' alg' buf'
   where
-    alg     = read algorithm :: Algorithm
-    buf     = read memory    :: ReplayMemory
-    mode'   = read mode      :: Mode
-    -- space'  = read space     :: Space
-    url'    = url cktHost cktPort ace pdk space var
-    uri'    = trackingURI mlfHost mlfPort
-    expName = algorithm ++ "-" ++ memory ++ "-" ++ ace ++ "-" ++ pdk
-                        ++ "-" ++ space ++ "-v" ++ var ++ "-" ++ mode
+    mode'   = read mode :: Mode

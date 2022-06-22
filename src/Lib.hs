@@ -1,19 +1,22 @@
 {-# OPTIONS_GHC -Wall #-}
 
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes          #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE BlockArguments      #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE TypeApplications    #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- | Utility and Helper functions for EDELWACE
 module Lib where
 
+import           GHC.Generics
 import qualified Data.Map           as M
 import qualified Data.Set           as S
+import           Data.Aeson
 import           Data.Time.Clock          (getCurrentTime)
 import           Data.Time.Format         (formatTime, defaultTimeLocale)
 import           System.Directory
@@ -26,6 +29,27 @@ import qualified Torch.Extensions   as T
 -- Types and Aliases
 ------------------------------------------------------------------------------
 
+-- | Available Algorithms
+data Algorithm = TD3 -- ^ Twin Delayed Deep Deterministic Policy Gradient
+               | SAC -- ^ Soft Actor Critic
+               | PPO -- ^ Proximal Policy Optimization
+               deriving (Eq, Show, Read, Generic, FromJSON, ToJSON)
+
+-- | Available Replay Buffer Types
+data ReplayMemory = RPB -- ^ Vanilla Replay Buffer
+                  | PER -- ^ Prioritized Experience Replay
+                  | MEM -- ^ PPO Style replay Memory
+                  | ERE -- ^ Emphasizing Recent Experience
+                  | HER -- ^ Hindsight Experience Replay
+                  deriving (Eq, Show, Read, Generic, FromJSON, ToJSON)
+
+-- | Hindsight Experience Replay Strategies for choosing Goals
+data Strategy = Final   -- ^ Only Final States are additional targets
+              | Random  -- ^ Replay with `k` random states encountered so far (basically vanilla)
+              | Episode -- ^ Replay with `k` random states from same episode.
+              | Future  -- ^ Replay with `k` random states from same episode, that were observed after
+              deriving (Eq, Show, Read, Generic, FromJSON, ToJSON)
+
 -- | Run Mode
 data Mode = Train   -- ^ Start Agent Training
           | Cont    -- ^ Continue Agent Training
@@ -33,18 +57,13 @@ data Mode = Train   -- ^ Start Agent Training
           deriving (Eq, Show, Read)
 
 -- | Command Line Arguments
-data Args = Args { algorithm :: String -- ^ See ALG.Algorithm
-                 , memory    :: String -- ^ See RPB.ReplayMemory
-                 , cktHost   :: String -- ^ Circus Server Host Address
+data Args = Args { cktHost   :: String -- ^ Circus Server Host Address
                  , cktPort   :: String -- ^ Circus Server Port
-                 , ace       :: String -- ^ ACE ID
-                 , pdk       :: String -- ^ ACE PDK
-                 , space     :: String -- ^ Design / Action Space
-                 , var       :: String -- ^ (Non-)Goal Environment
                  , path      :: String -- ^ Checkpoint Base Path
                  , mlfHost   :: String -- ^ MLFlow Server Host Address
                  , mlfPort   :: String -- ^ MLFlow Server Port
                  , mode      :: String -- ^ Run Mode
+                 , config    :: String -- ^ File Path to config.yaml
                  } deriving (Show)
 
 -- | Type Alias for Transition Tuple (state, action, reward, state', done)
@@ -54,13 +73,13 @@ type Transition = (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
 -- Evaluation
 ------------------------------------------------------------------------------
 
--- | Calculate success rate given dones and rewards
-successRate :: T.Tensor -> T.Tensor -> Float
-successRate dones rewards = rate
+-- | Calculate success rate given 1D Boolean done Tensor
+successRate :: T.Tensor -> Float
+successRate dones = rate
   where
-    num   = realToFrac . head $ T.shape dones
-    succ' = T.logicalAnd dones $ T.ge rewards 0.0
-    rate  = T.asValue (T.sumAll succ' / num * 100.0) :: Float
+    num  = realToFrac . head . T.shape             $ dones
+    suc  = realToFrac . head . T.shape . T.nonzero $ dones
+    rate = (suc / num) * 100.0
 
 ------------------------------------------------------------------------------
 -- Convenience / Syntactic Sugar
@@ -103,6 +122,14 @@ lookup' ks m = mapM (`M.lookup` m) ks
 -- | Map an appropriate function over a transition tuple
 tmap :: (T.Tensor -> T.Tensor) -> Transition -> Transition
 tmap f (s, a, r, n, d) = (f s, f a, f r, f n, f d)
+
+-- | Infix div
+(//) :: Integral a => a -> a -> a
+(//) = div
+
+-- | Infix mod
+(%) :: Integral a => a -> a -> a
+(%) = mod
 
 ------------------------------------------------------------------------------
 -- File System

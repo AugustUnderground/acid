@@ -30,6 +30,7 @@ dependencies:
 - bytestring
 - time
 - aeson
+- yaml
 - containers
 - directory
 - optparse-applicative
