@@ -15,6 +15,7 @@ import           GHC.Generics                     hiding (Meta)
 import qualified Data.ByteString.Char8 as BS
 import           Data.Yaml
 import qualified Torch                 as T
+import qualified Torch.Extensions      as T
 
 ------------------------------------------------------------------------------
 -- Reading/Writing, Encoding/Decoding
@@ -22,7 +23,11 @@ import qualified Torch                 as T
 
 -- | Read a Tensor from float
 read' :: Float -> Maybe T.Tensor
-read' x = Just (T.asTensor [x])
+read' x = Just (T.toTensor [x])
+
+-- | Read a Tensor from float
+read'' :: Float -> Maybe T.Tensor
+read'' x = Just (T.toTensor x)
 
 -- | Decode / Parse ByteString to Meta
 parseConfig' :: BS.ByteString -> Config
@@ -131,32 +136,32 @@ data HyperParameters = HyperParameters
 -- | Hyper Parameters JSON Parse Instance
 instance FromJSON HyperParameters where
   parseJSON (Object v) = do HyperParameters 
-    <$>            v .: "d"           .!= Default.d             -- 2
-    <*>            v .: "c"           .!= Default.c             -- 0.5
-    <*> (read' <$> v .: "γ")          .!= Default.γ             -- Tensor [] 0.99
-    <*> (read' <$> v .: "τ")          .!= Default.τ             -- Tensor [] 5.0e-3
-    <*>            v .: "decay"       .!= Default.decayPeriod   -- 10 ^ (5 :: Int)
-    <*>            v .: "σ-min"       .!= Default.σMin          -- 1.0
-    <*>            v .: "σ-max"       .!= Default.σMax          -- 1.0
-    <*> (read' <$> v .: "σ-eval")     .!= Default.σEval         -- 0.2
-    <*> (read' <$> v .: "σ-act")      .!= Default.σAct          -- 0.1
-    <*>            v .: "σ-clip"      .!= Default.σClip         -- 0.5
-    <*>            v .: "hidden-dim"  .!= Default.hidDim        -- 256
-    <*>            v .: "w-init"      .!= Default.wInit         -- 3.0e-4
-    <*> (read' <$> v .: "ηφ")         .!= Default.ηφ            -- Tensor [] 1.0e-3
-    <*> (read' <$> v .: "ηθ")         .!= Default.ηθ            -- Tensor [] 1.0e-3
-    <*>            v .: "β1"          .!= Default.β1            -- 0.9
-    <*>            v .: "β2"          .!= Default.β2            -- 0.99
-    <*>            v .: "lrelu-slope" .!= Default.negativeSlope -- 0.01
-    <*>            v .: "k"           .!= Default.k             -- 4
-    <*>            v .: "strategy"    .!= Future
-    <*>            v .: "action-low"  .!= Default.actionLow     -- (-1.0)
-    <*>            v .: "action-high" .!= Default.actionHigh    -- 1.0
-    <*>            v .: "num-epochs"  .!= Default.numEpochs     -- 40
-    <*>            v .: "expl-freq"   .!= Default.explFreq      -- 50
-    <*>            v .: "eval-freq"   .!= Default.evalFreq      -- 50
-    <*>            v .: "buffer-size" .!= Default.bufferSize    -- 10 ^ (6 :: Int)
-    <*>            v .: "batch-size"  .!= Default.batchSize     -- 256
+    <$>             v .: "d"           .!= Default.d             -- 2
+    <*>             v .: "c"           .!= Default.c             -- 0.5
+    <*> (read'' <$> v .: "γ")          .!= Default.γ             -- Tensor [] 0.99
+    <*> (read'' <$> v .: "τ")          .!= Default.τ             -- Tensor [] 5.0e-3
+    <*>             v .: "decay"       .!= Default.decayPeriod   -- 10 ^ (5 :: Int)
+    <*>             v .: "σ-min"       .!= Default.σMin          -- 1.0
+    <*>             v .: "σ-max"       .!= Default.σMax          -- 1.0
+    <*> (read' <$>  v .: "σ-eval")     .!= Default.σEval         -- 0.2
+    <*> (read' <$>  v .: "σ-act")      .!= Default.σAct          -- 0.1
+    <*>             v .: "σ-clip"      .!= Default.σClip         -- 0.5
+    <*>             v .: "hidden-dim"  .!= Default.hidDim        -- 256
+    <*>             v .: "w-init"      .!= Default.wInit         -- 3.0e-4
+    <*> (read'' <$> v .: "ηφ")         .!= Default.ηφ            -- Tensor [] 1.0e-3
+    <*> (read'' <$> v .: "ηθ")         .!= Default.ηθ            -- Tensor [] 1.0e-3
+    <*>             v .: "β1"          .!= Default.β1            -- 0.9
+    <*>             v .: "β2"          .!= Default.β2            -- 0.99
+    <*>             v .: "lrelu-slope" .!= Default.negativeSlope -- 0.01
+    <*>             v .: "k"           .!= Default.k             -- 4
+    <*>             v .: "strategy"    .!= Future
+    <*>             v .: "action-low"  .!= Default.actionLow     -- (-1.0)
+    <*>             v .: "action-high" .!= Default.actionHigh    -- 1.0
+    <*>             v .: "num-epochs"  .!= Default.numEpochs     -- 40
+    <*>             v .: "expl-freq"   .!= Default.explFreq      -- 50
+    <*>             v .: "eval-freq"   .!= Default.evalFreq      -- 50
+    <*>             v .: "buffer-size" .!= Default.bufferSize    -- 10 ^ (6 :: Int)
+    <*>             v .: "batch-size"  .!= Default.batchSize     -- 256
   parseJSON _ = fail "Expected an Object"
 
 -- | JSON Hyper Parameters Parse Instance
