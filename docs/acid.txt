@@ -115,6 +115,53 @@ rescale :: Tensor -> Tensor
 -- | Utility and Helper functions for EDELWACE
 module Lib
 
+-- | Available Algorithms
+data Algorithm
+
+-- | Twin Delayed Deep Deterministic Policy Gradient
+TD3 :: Algorithm
+
+-- | Soft Actor Critic
+SAC :: Algorithm
+
+-- | Proximal Policy Optimization
+PPO :: Algorithm
+
+-- | Available Replay Buffer Types
+data ReplayMemory
+
+-- | Vanilla Replay Buffer
+RPB :: ReplayMemory
+
+-- | Prioritized Experience Replay
+PER :: ReplayMemory
+
+-- | PPO Style replay Memory
+MEM :: ReplayMemory
+
+-- | Emphasizing Recent Experience
+ERE :: ReplayMemory
+
+-- | Hindsight Experience Replay
+HER :: ReplayMemory
+
+-- | Hindsight Experience Replay Strategies for choosing Goals
+data Strategy
+
+-- | Only Final States are additional targets
+Final :: Strategy
+
+-- | Replay with <tt>k</tt> random states encountered so far (basically
+--   vanilla)
+Random :: Strategy
+
+-- | Replay with <tt>k</tt> random states from same episode.
+Episode :: Strategy
+
+-- | Replay with <tt>k</tt> random states from same episode, that were
+--   observed after
+Future :: Strategy
+
 -- | Run Mode
 data Mode
 
@@ -129,31 +176,13 @@ Eval :: Mode
 
 -- | Command Line Arguments
 data Args
-Args :: String -> String -> String -> String -> String -> String -> String -> String -> String -> String -> String -> String -> Args
-
--- | See ALG.Algorithm
-[algorithm] :: Args -> String
-
--- | See RPB.ReplayMemory
-[memory] :: Args -> String
+Args :: String -> String -> String -> String -> String -> String -> String -> Args
 
 -- | Circus Server Host Address
 [cktHost] :: Args -> String
 
 -- | Circus Server Port
 [cktPort] :: Args -> String
-
--- | ACE ID
-[ace] :: Args -> String
-
--- | ACE PDK
-[pdk] :: Args -> String
-
--- | Design / Action Space
-[space] :: Args -> String
-
--- | (Non-)Goal Environment
-[var] :: Args -> String
 
 -- | Checkpoint Base Path
 [path] :: Args -> String
@@ -167,11 +196,14 @@ Args :: String -> String -> String -> String -> String -> String -> String -> St
 -- | Run Mode
 [mode] :: Args -> String
 
+-- | File Path to config.yaml
+[config] :: Args -> String
+
 -- | Type Alias for Transition Tuple (state, action, reward, state', done)
 type Transition = (Tensor, Tensor, Tensor, Tensor, Tensor)
 
--- | Calculate success rate given dones and rewards
-successRate :: Tensor -> Tensor -> Float
+-- | Calculate success rate given 1D Boolean done Tensor
+successRate :: Tensor -> Float
 
 -- | Range from 0 to n - 1
 range :: Int -> [Int]
@@ -199,6 +231,12 @@ lookup' :: Ord k => [k] -> Map k a -> Maybe [a]
 
 -- | Map an appropriate function over a transition tuple
 tmap :: (Tensor -> Tensor) -> Transition -> Transition
+
+-- | Infix div
+(//) :: Integral a => a -> a -> a
+
+-- | Infix mod
+(%) :: Integral a => a -> a -> a
 
 -- | Current Timestamp as formatted string
 currentTimeStamp :: String -> IO String
@@ -277,6 +315,24 @@ softSync :: Parameterized f => Tensor -> f -> f -> IO f
 
 -- | Hard Copy of Parameter from one net to the other
 copySync :: Parameterized f => f -> f -> f
+instance Data.Aeson.Types.ToJSON.ToJSON Lib.Algorithm
+instance Data.Aeson.Types.FromJSON.FromJSON Lib.Algorithm
+instance GHC.Generics.Generic Lib.Algorithm
+instance GHC.Read.Read Lib.Algorithm
+instance GHC.Show.Show Lib.Algorithm
+instance GHC.Classes.Eq Lib.Algorithm
+instance Data.Aeson.Types.ToJSON.ToJSON Lib.ReplayMemory
+instance Data.Aeson.Types.FromJSON.FromJSON Lib.ReplayMemory
+instance GHC.Generics.Generic Lib.ReplayMemory
+instance GHC.Read.Read Lib.ReplayMemory
+instance GHC.Show.Show Lib.ReplayMemory
+instance GHC.Classes.Eq Lib.ReplayMemory
+instance Data.Aeson.Types.ToJSON.ToJSON Lib.Strategy
+instance Data.Aeson.Types.FromJSON.FromJSON Lib.Strategy
+instance GHC.Generics.Generic Lib.Strategy
+instance GHC.Read.Read Lib.Strategy
+instance GHC.Show.Show Lib.Strategy
+instance GHC.Classes.Eq Lib.Strategy
 instance GHC.Read.Read Lib.Mode
 instance GHC.Show.Show Lib.Mode
 instance GHC.Classes.Eq Lib.Mode
@@ -397,8 +453,17 @@ currentSizing :: CircusUrl -> IO (Map Int (Map String Float))
 
 -- | Shorthand for getting last Action
 lastAction :: CircusUrl -> IO (Map Int (Map String Float))
+instance Data.Aeson.Types.ToJSON.ToJSON CKT.Circuit
+instance Data.Aeson.Types.FromJSON.FromJSON CKT.Circuit
+instance GHC.Generics.Generic CKT.Circuit
 instance GHC.Classes.Eq CKT.Circuit
+instance Data.Aeson.Types.ToJSON.ToJSON CKT.PDK
+instance Data.Aeson.Types.FromJSON.FromJSON CKT.PDK
+instance GHC.Generics.Generic CKT.PDK
 instance GHC.Classes.Eq CKT.PDK
+instance Data.Aeson.Types.ToJSON.ToJSON CKT.Space
+instance Data.Aeson.Types.FromJSON.FromJSON CKT.Space
+instance GHC.Generics.Generic CKT.Space
 instance GHC.Classes.Eq CKT.Space
 instance GHC.Show.Show CKT.Info
 instance GHC.Generics.Generic CKT.Info
@@ -489,48 +554,8 @@ trackEnvState :: Tracker -> CircusUrl -> Int -> IO ()
 instance GHC.Show.Show MLFlow.Extensions.Tracker
 
 
--- | General Replay Buffer Types and TypeClasses
-module ALG
-
--- | Available Algorithms
-data Algorithm
-
--- | Twin Delayed Deep Deterministic Policy Gradient
-TD3 :: Algorithm
-
--- | Soft Actor Critic
-SAC :: Algorithm
-
--- | Proximal Policy Optimization
-PPO :: Algorithm
-
--- | Replay Buffer Interface
-class Agent a
-
--- | Save an agent at a given Path
-saveAgent :: Agent a => FilePath -> a -> IO a
-
--- | Load an agent saved at a Path
-loadAgent :: Agent a => FilePath -> Int -> Int -> Int -> IO a
-
--- | Take an action to the best Ability
-act :: Agent a => a -> Tensor -> IO Tensor
-
--- | Take a noisy action
-act' :: Agent a => a -> Tensor -> IO Tensor
-
--- | Take an action without any noise
-act'' :: Agent a => a -> Tensor -> Tensor
-
--- | Update Policy
-updatePolicy :: Agent a => CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a
-instance GHC.Read.Read ALG.Algorithm
-instance GHC.Show.Show ALG.Algorithm
-instance GHC.Classes.Eq ALG.Algorithm
-
-
 -- | Twin Delayed Deep Deterministic Policy Gradient Algorithm Defaults
-module ALG.HyperParameters
+module CFG.Default
 
 -- | Print verbose debug output
 verbose :: Bool
@@ -621,26 +646,184 @@ evalFreq :: Int
 k :: Int
 
 
+-- | YAML Configurations
+module CFG
+
+-- | Read a Tensor from float
+read' :: Float -> Maybe Tensor
+
+-- | Decode / Parse ByteString to Meta
+parseConfig' :: ByteString -> Config
+
+-- | Decode / Parse Config File
+parseConfig :: FilePath -> IO Config
+
+-- | YAML Config File
+data Config
+Config :: Meta -> HyperParameters -> Config
+
+-- | Meta Information
+[meta] :: Config -> Meta
+
+-- | Hyper Parameters
+[hyperParameters] :: Config -> HyperParameters
+
+-- | Meta Information
+data Meta
+Meta :: Bool -> Int -> Int -> Int -> Algorithm -> ReplayMemory -> Circuit -> PDK -> Space -> Int -> Meta
+
+-- | Print verbose debug output
+[verbose] :: Meta -> Bool
+
+-- | Random seed for reproducibility
+[rngSeed] :: Meta -> Int
+
+-- | Number of episodes to play
+[numEpisodes] :: Meta -> Int
+
+-- | Maximum Number of Steps per Episode
+[horizonT] :: Meta -> Int
+
+-- | ACiD Algorithm ID
+[algorithm] :: Meta -> Algorithm
+
+-- | ACiD Buffer ID
+[buffer] :: Meta -> ReplayMemory
+
+-- | ACE Single-Ended OpAmp ID
+[aceId] :: Meta -> Circuit
+
+-- | ACE Backend / PDK
+[aceBackend] :: Meta -> PDK
+
+-- | Design / Action Space
+[space] :: Meta -> Space
+
+-- | Environment Variant
+[variant] :: Meta -> Int
+
+-- | Hyper Parameters
+data HyperParameters
+HyperParameters :: Int -> Float -> Tensor -> Tensor -> Int -> Float -> Float -> Tensor -> Tensor -> Float -> Int -> Float -> Tensor -> Tensor -> Float -> Float -> Float -> Int -> Strategy -> Float -> Float -> Int -> Int -> Int -> Int -> Int -> HyperParameters
+
+-- | Policy and Target Update Delay
+[d] :: HyperParameters -> Int
+
+-- | Noise clipping
+[c] :: HyperParameters -> Float
+
+-- | Discount Factor (Tensor)
+[γ] :: HyperParameters -> Tensor
+
+-- | Soft Update coefficient ("polyak") τ ∈ [0,1]
+[τ] :: HyperParameters -> Tensor
+
+-- | Decay Period
+[decay] :: HyperParameters -> Int
+
+-- | Noise Clipping Minimum
+[σMin] :: HyperParameters -> Float
+
+-- | Noise Clipping Maximum
+[σMax] :: HyperParameters -> Float
+
+-- | Evaluation Noise standard deviation (σ~) (Tensor)
+[σEval] :: HyperParameters -> Tensor
+
+-- | Action Noise standard deviation (Tensor)
+[σAct] :: HyperParameters -> Tensor
+
+-- | Noise Clipping
+[σClip] :: HyperParameters -> Float
+
+-- | Number of units per hidden layer
+[hidDim] :: HyperParameters -> Int
+
+-- | Initial weights
+[wInit] :: HyperParameters -> Float
+
+-- | Actor Learning Rate (Tensor)
+[ηφ] :: HyperParameters -> Tensor
+
+-- | Critic Learning Rate (Tensor)
+[ηθ] :: HyperParameters -> Tensor
+
+-- | ADAM Hyper Parameter β1
+[β1] :: HyperParameters -> Float
+
+-- | ADAM Hyper Parameter β2
+[β2] :: HyperParameters -> Float
+
+-- | Leaky ReLU Slope
+[lreluSlope] :: HyperParameters -> Float
+
+-- | Number of Additional Targets to sample
+[k] :: HyperParameters -> Int
+
+-- | Goal Sampling Strategy
+[strategy] :: HyperParameters -> Strategy
+
+-- | Action space lower bound
+[actionLow] :: HyperParameters -> Float
+
+-- | Action space upper bound
+[actionHigh] :: HyperParameters -> Float
+
+-- | Number of epochs to train
+[numEpochs] :: HyperParameters -> Int
+
+-- | Frequency of random exploration episodes
+[explFreq] :: HyperParameters -> Int
+
+-- | Frequency of random exploration episodes
+[evalFreq] :: HyperParameters -> Int
+
+-- | Replay Buffer Size
+[bufferSize] :: HyperParameters -> Int
+
+-- | Mini batch size
+[batchSize] :: HyperParameters -> Int
+instance GHC.Show.Show CFG.Meta
+instance GHC.Generics.Generic CFG.Meta
+instance GHC.Show.Show CFG.HyperParameters
+instance GHC.Generics.Generic CFG.HyperParameters
+instance GHC.Show.Show CFG.Config
+instance GHC.Generics.Generic CFG.Config
+instance Data.Aeson.Types.FromJSON.FromJSON CFG.Config
+instance Data.Aeson.Types.ToJSON.ToJSON CFG.Config
+instance Data.Aeson.Types.FromJSON.FromJSON CFG.HyperParameters
+instance Data.Aeson.Types.ToJSON.ToJSON CFG.HyperParameters
+instance Data.Aeson.Types.FromJSON.FromJSON CFG.Meta
+instance Data.Aeson.Types.ToJSON.ToJSON CFG.Meta
+
+
+-- | General Replay Buffer Types and TypeClasses
+module ALG
+
+-- | Replay Buffer Interface
+class Agent a
+
+-- | Save an agent at a given Path
+saveAgent :: Agent a => FilePath -> a -> IO a
+
+-- | Load an agent saved at a Path
+loadAgent :: Agent a => HyperParameters -> FilePath -> Int -> Int -> Int -> IO a
+
+-- | Take an action to the best Ability
+act :: Agent a => a -> Tensor -> IO Tensor
+
+-- | Take a noisy action
+act' :: Agent a => a -> Tensor -> IO Tensor
+
+-- | Take an action without any noise
+act'' :: Agent a => a -> Tensor -> Tensor
+
+-- | Update Policy
+updatePolicy :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> [Transition] -> a -> IO a
+
+
 -- | General Replay Buffer Types and TypeClasses
 module RPB
-
--- | Available Replay Buffer Types
-data ReplayMemory
-
--- | Vanilla Replay Buffer
-RPB :: ReplayMemory
-
--- | Prioritized Experience Replay
-PER :: ReplayMemory
-
--- | PPO Style replay Memory
-MEM :: ReplayMemory
-
--- | Emphasizing Recent Experience
-ERE :: ReplayMemory
-
--- | Hindsight Experience Replay
-HER :: ReplayMemory
 
 -- | Replay Buffer Interface
 class (Functor b) => ReplayBuffer b
@@ -661,7 +844,7 @@ sampleIO :: ReplayBuffer b => Int -> b Tensor -> IO (b Tensor)
 asTuple :: ReplayBuffer b => b Tensor -> (Tensor, Tensor, Tensor, Tensor, Tensor)
 
 -- | Collect Experiences in Buffer
-collectExperience :: (ReplayBuffer b, Agent a) => CircusUrl -> Tracker -> Int -> a -> IO (b Tensor)
+collectExperience :: (ReplayBuffer b, Agent a) => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> a -> IO (b Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
 randomBatches :: ReplayBuffer b => Int -> Int -> b Tensor -> IO [Transition]
@@ -707,13 +890,10 @@ sampleIO' :: Int -> Buffer Tensor -> IO (Buffer Tensor)
 asTuple' :: Buffer Tensor -> Transition
 
 -- | Evaluate Policy for T steps and return experience Buffer
-collectStep :: Agent a => CircusUrl -> Tracker -> Int -> Int -> a -> Tensor -> Buffer Tensor -> IO (Buffer Tensor)
+collectStep :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> Int -> a -> Tensor -> Buffer Tensor -> IO (Buffer Tensor)
 
 -- | Collect experience for a given number of steps
-collectExperience' :: Agent a => CircusUrl -> Tracker -> Int -> a -> IO (Buffer Tensor)
-instance GHC.Read.Read RPB.ReplayMemory
-instance GHC.Show.Show RPB.ReplayMemory
-instance GHC.Classes.Eq RPB.ReplayMemory
+collectExperience' :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> Int -> a -> IO (Buffer Tensor)
 instance GHC.Classes.Eq a => GHC.Classes.Eq (RPB.Buffer a)
 instance GHC.Show.Show a => GHC.Show.Show (RPB.Buffer a)
 instance GHC.Base.Functor RPB.Buffer
@@ -730,14 +910,14 @@ data Strategy
 -- | Only Final States are additional targets
 Final :: Strategy
 
--- | Replay with <a>k</a> random states encountered so far (basically
+-- | Replay with <tt>k</tt> random states encountered so far (basically
 --   vanilla)
 Random :: Strategy
 
--- | Replay with <a>k</a> random states from same episode.
+-- | Replay with <tt>k</tt> random states from same episode.
 Episode :: Strategy
 
--- | Replay with <a>k</a> random states from same episode, that were
+-- | Replay with <tt>k</tt> random states from same episode, that were
 --   observed after
 Future :: Strategy
 
@@ -779,8 +959,6 @@ epsSplit :: Buffer Tensor -> [Buffer Tensor]
 --   <a>Random</a> is basically the same as <a>Episode</a> you just have to
 --   give it the entire buffer, not just the episode.
 sampleGoals :: CircusUrl -> Strategy -> Int -> Buffer Tensor -> IO (Buffer Tensor)
-instance GHC.Classes.Eq RPB.HER.Strategy
-instance GHC.Show.Show RPB.HER.Strategy
 instance GHC.Classes.Eq a => GHC.Classes.Eq (RPB.HER.Buffer a)
 instance GHC.Show.Show a => GHC.Show.Show (RPB.HER.Buffer a)
 instance GHC.Base.Functor RPB.HER.Buffer
@@ -810,7 +988,7 @@ CriticNet :: Linear -> Linear -> Linear -> Linear -> Linear -> Linear -> CriticN
 
 -- | TD3 Agent
 data Agent
-Agent :: PolicyNet -> PolicyNet -> CriticNet -> CriticNet -> Adam -> Adam -> Agent
+Agent :: PolicyNet -> PolicyNet -> CriticNet -> CriticNet -> Adam -> Adam -> Float -> Float -> Tensor -> Tensor -> Float -> Agent
 
 -- | Online Policy φ
 [φ] :: Agent -> PolicyNet
@@ -830,8 +1008,23 @@ Agent :: PolicyNet -> PolicyNet -> CriticNet -> CriticNet -> Adam -> Adam -> Age
 -- | Critic Optimizer
 [θOptim] :: Agent -> Adam
 
+-- | Lower bound of Action space
+[actLo] :: Agent -> Float
+
+-- | Upper bound of Action space
+[actHi] :: Agent -> Float
+
+-- | Action Noise
+[σA] :: Agent -> Tensor
+
+-- | Eval Noise
+[σE] :: Agent -> Tensor
+
+-- | Noise Clipping
+[c'] :: Agent -> Float
+
 -- | Agent constructor
-mkAgent :: Int -> Int -> IO Agent
+mkAgent :: HyperParameters -> Int -> Int -> IO Agent
 
 -- | Save an Agent and return the agent
 saveAgent' :: FilePath -> Agent -> IO ()
@@ -856,13 +1049,13 @@ instance Torch.NN.Randomizable ALG.TD3.PolicyNetSpec ALG.TD3.PolicyNet
 module ACiD
 
 -- | Policy evaluation Episode
-eval :: Agent a => CircusUrl -> Tracker -> a -> Int -> Int -> Tensor -> Float -> Bool -> IO Float
+eval :: Agent a => Meta -> HyperParameters -> CircusUrl -> Tracker -> a -> Int -> Int -> Tensor -> Tensor -> IO ()
 
 -- | Runs training on given Agent with Buffer
-train :: (Agent a, ReplayBuffer b) => CircusUrl -> Tracker -> String -> Int -> b Tensor -> a -> IO ()
+train :: (Agent a, ReplayBuffer b) => Meta -> HyperParameters -> CircusUrl -> Tracker -> String -> Int -> b Tensor -> a -> IO ()
 
 -- | Create Agent and Buffer, then run training
-run' :: CircusUrl -> Tracker -> String -> Mode -> Algorithm -> ReplayMemory -> IO ()
+run' :: Meta -> HyperParameters -> CircusUrl -> Tracker -> String -> Mode -> Algorithm -> ReplayMemory -> IO ()
 
 -- | Clown School
 run :: Args -> IO ()
