@@ -192,13 +192,10 @@ sampleGoals url Future k' buf | k' >= bs  = pure buf
     opts       = T.withDType T.Int32 . T.withDevice T.cpu $ T.defaultOpts
 
 -- | Evaluate Policy for T steps and return experience Buffer
-collectStep :: (Agent a) => Meta -> HyperParameters -> CircusUrl -> Tracker 
-            -> Int -> Int -> a -> T.Tensor -> T.Tensor -> Buffer T.Tensor 
-            -> IO (Buffer T.Tensor)
-collectStep _              HyperParameters{..}  url _       _    0 _     _ _ buf 
-        = sampleGoals url Future k buf
-collectStep meta'@Meta{..} hp@HyperParameters{..} url tracker iter t agent s g buf 
-        = do
+collectStep :: (Agent a) => Params -> CircusUrl -> Tracker -> Int -> Int -> a 
+            -> T.Tensor -> T.Tensor -> Buffer T.Tensor -> IO (Buffer T.Tensor)
+collectStep Params{..} url _ _ 0 _ _ _ buf = sampleGoals url strategy k buf
+collectStep p@Params{..} url tracker iter t agent s g buf = do
     a <- if iter % explFreq == 0
             then randomAction url
             else act' agent obs >>= T.detach
@@ -221,18 +218,18 @@ collectStep meta'@Meta{..} hp@HyperParameters{..} url tracker iter t agent s g b
         putStrLn $ "\t\tDone with: " ++ show ds ++ "\n\t\t\tAfter " 
                     ++  show (iter' !! t') ++ " steps."
 
-    collectStep meta' hp url tracker iter t' agent s' g' buf'
+    collectStep p url tracker iter t' agent s' g' buf'
   where
     obs = T.cat (T.Dim 1) [s, g]
     iter' = map ((iter * horizonT + 1) +) . reverse $ range horizonT
     t'    = t - 1
 
 -- | Collect experience for a given number of steps
-collectExperience :: (Agent a) => Meta -> HyperParameters -> CircusUrl 
-                  -> Tracker -> Int -> a -> IO (Buffer T.Tensor)
-collectExperience meta'@Meta{..} hp url tracker iter agent = do
+collectExperience :: (Agent a) => Params -> CircusUrl -> Tracker -> Int -> a 
+                  -> IO (Buffer T.Tensor)
+collectExperience p@Params{..} url tracker iter agent = do
     (s,_,g) <- reset url
     trackEnvState tracker url (iter * horizonT)
-    collectStep meta' hp url tracker iter horizonT agent s g buf
+    collectStep p url tracker iter horizonT agent s g buf
   where
     buf = empty

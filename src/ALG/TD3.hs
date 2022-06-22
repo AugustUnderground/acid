@@ -130,8 +130,8 @@ instance ALG.Agent Agent where
   updatePolicy   = updatePolicy
 
 -- | Agent constructor
-mkAgent :: HyperParameters -> Int -> Int -> IO Agent
-mkAgent HyperParameters{..} obsDim actDim = do
+mkAgent :: Params -> Int -> Int -> IO Agent
+mkAgent Params{..} obsDim actDim = do
     φOnline  <- T.toFloat <$> T.sample (PolicyNetSpec obsDim actDim hidDim wInit)
     φTarget' <- T.toFloat <$> T.sample (PolicyNetSpec obsDim actDim hidDim wInit)
     θOnline  <- T.toFloat <$> T.sample (CriticNetSpec obsDim actDim hidDim wInit)
@@ -167,9 +167,9 @@ saveAgent' :: FilePath -> Agent -> IO ()
 saveAgent' p a = void $ saveAgent p a
 
 -- | Load an Agent Checkpoint
-loadAgent :: HyperParameters -> String -> Int -> Int -> Int -> IO Agent
-loadAgent hp@HyperParameters{..} path obsDim actDim iter = do
-        Agent{..} <- mkAgent hp obsDim actDim
+loadAgent :: Params -> String -> Int -> Int -> Int -> IO Agent
+loadAgent p@Params{..} path obsDim actDim iter = do
+        Agent{..} <- mkAgent p obsDim actDim
 
         fφ    <- T.loadParams φ       (path ++ "/actorOnline.pt")
         fφ'   <- T.loadParams φ'      (path ++ "/actorTarget.pt")
@@ -207,9 +207,8 @@ act'' Agent{..} s = T.toDevice dev' . π φ . T.toDevice dev $ s
     dev  = T.gpu
 
 -- | Policy Update Step
-updateStep :: Meta -> HyperParameters -> Int -> Int -> Agent -> Tracker 
-           -> Transition -> IO Agent
-updateStep Meta{..} HyperParameters{..} iter epoch agent@Agent{..} tracker trans = do
+updateStep :: Params -> Int -> Int -> Agent -> Tracker -> Transition -> IO Agent
+updateStep Params{..} iter epoch agent@Agent{..} tracker trans = do
     a' <- act agent s' >>= T.detach
     v' <- T.detach . T.squeezeAll $ q' θ' s' a'
     y  <- T.detach $ r + ((1.0 - d') * γ * v')
@@ -258,11 +257,11 @@ updateStep Meta{..} HyperParameters{..} iter epoch agent@Agent{..} tracker trans
         pure (φTarget', θTarget')
 
 -- | Update TD3 Policy
-updatePolicy :: Meta -> HyperParameters -> CircusUrl -> Tracker -> Int 
-             -> [Transition] -> Agent -> IO Agent
-updatePolicy _ _ _ _ _ [] agent = pure agent
-updatePolicy meta' hp@HyperParameters{..} url tracker iter (batch:batches) agent =
-    updateStep meta' hp iter epoch agent tracker batch >>= 
-        updatePolicy meta' hp url tracker iter batches
+updatePolicy :: Params -> CircusUrl -> Tracker -> Int -> [Transition] -> Agent 
+             -> IO Agent
+updatePolicy _ _ _ _ [] agent = pure agent
+updatePolicy p@Params{..} url tracker iter (batch:batches) agent =
+    updateStep p iter epoch agent tracker batch >>= 
+        updatePolicy p url tracker iter batches
   where
     epoch = numEpochs - length batches - 1

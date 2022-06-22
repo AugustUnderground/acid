@@ -31,7 +31,7 @@ class (Functor b) => ReplayBuffer b where
   -- | Return the Tuple: (s, a, r, s', d) for training
   asTuple  :: b T.Tensor -> (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
   -- | Collect Experiences in Buffer
-  collectExperience :: (Agent a) => Meta -> HyperParameters -> CircusUrl 
+  collectExperience :: (Agent a) => Params -> CircusUrl 
                     -> Tracker -> Int -> a -> IO (b T.Tensor)
 
 -- | Generate a list of uniformly sampled minibatches
@@ -128,13 +128,12 @@ asTuple' :: Buffer T.Tensor -> Transition
 asTuple' (Buffer s a r n d) = (s,a,r,n,d)
 
 -- | Evaluate Policy for T steps and return experience Buffer
-collectStep :: (Agent a) => Meta -> HyperParameters -> CircusUrl -> Tracker 
-            -> Int -> Int -> a -> T.Tensor -> Buffer T.Tensor 
-            -> IO (Buffer T.Tensor)
-collectStep _ _ _   _       _    0 _     _ buf = pure buf
-collectStep meta'@Meta{..} hp@HyperParameters{..} url tracker iter t agent s buf = do
-    p <- (iter *) <$> numEnvs url
-    a <- if p % explFreq == 0
+collectStep :: (Agent a) => Params -> CircusUrl -> Tracker -> Int -> Int -> a 
+            -> T.Tensor -> Buffer T.Tensor -> IO (Buffer T.Tensor)
+collectStep _            _   _       _    0 _     _ buf = pure buf
+collectStep p@Params{..} url tracker iter t agent s buf = do
+    p' <- (iter *) <$> numEnvs url
+    a <- if p' % explFreq == 0
             then randomAction url
             else act' agent s >>= T.detach
     
@@ -150,16 +149,16 @@ collectStep meta'@Meta{..} hp@HyperParameters{..} url tracker iter t agent s buf
     when (verbose && iter % 10 == 0) do
         putStrLn $ "\tAverage Reward: \t" ++ show (T.mean r)
 
-    collectStep meta' hp url tracker iter t' agent s_ buf'
+    collectStep p url tracker iter t' agent s_ buf'
   where
     iter' = [(iter * horizonT) .. (iter * 2 * horizonT + 1)]
     t'     = t - 1
 
 -- | Collect experience for a given number of steps
-collectExperience' :: (Agent a) => Meta -> HyperParameters -> CircusUrl 
-                   -> Tracker -> Int -> a -> IO (Buffer T.Tensor)
-collectExperience' meta'@Meta{..} hp url tracker iter agent = do
+collectExperience' :: (Agent a) => Params -> CircusUrl -> Tracker -> Int -> a 
+                   -> IO (Buffer T.Tensor)
+collectExperience' p@Params{..} url tracker iter agent = do
     (obs, _, _) <- reset url
-    collectStep meta' hp url tracker iter horizonT agent obs buf
+    collectStep p url tracker iter horizonT agent obs buf
   where
     buf = empty
