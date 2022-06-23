@@ -35,3 +35,4 @@ expl-freq:    10     # Frequency of random exploration episodes
 eval-freq:    5      # Frequency of random exploration episodes
 buffer-size:  1.0e6  # Replay Buffer Size
 batch-size:   256    # Mini batch size
+rng-seed:     666    # Random Seed
