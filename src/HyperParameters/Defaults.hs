@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
 -- | Twin Delayed Deep Deterministic Policy Gradient Algorithm Defaults
-module CFG.Default where
+module HyperParameters.Defaults where
 
 import qualified Torch            as T
 import qualified Torch.Extensions as T
@@ -10,12 +10,9 @@ import qualified Torch.Extensions as T
 --  General Default Settings
 ------------------------------------------------------------------------------
 
--- | Print verbose debug output
-verbose :: Bool
-verbose     = True
 -- | Number of episodes to play
 numEpisodes :: Int
-numEpisodes = 50 -- 100
+numEpisodes = 100
 -- | Maximum Number of Steps per Episode
 horizonT :: Int
 horizonT    = 50

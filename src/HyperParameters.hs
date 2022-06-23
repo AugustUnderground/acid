@@ -5,17 +5,16 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
 
--- | YAML Configuration Parser
-module CFG where
+-- | Hyper Parameter Configuration
+module HyperParameters where
 
 import           Lib
-import           CKT
-import qualified CFG.Default           as Default
+import qualified HyperParameters.Defaults as Default
 import           GHC.Generics
-import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Char8    as BS
 import           Data.Yaml
-import qualified Torch                 as T
-import qualified Torch.Extensions      as T
+import qualified Torch                    as T
+import qualified Torch.Extensions         as T
 
 ------------------------------------------------------------------------------
 -- Reading/Writing, Encoding/Decoding
@@ -45,16 +44,9 @@ parseConfig path = parseConfig' <$> BS.readFile path
 ------------------------------------------------------------------------------
 
 -- | Configuration Parameters Information
-data Params = Params { verbose     :: Bool          -- ^ Print verbose debug output
-                     , rngSeed     :: Int           -- ^ Random seed for reproducibility
+data Params = Params { rngSeed     :: Int           -- ^ Random seed for reproducibility
                      , numEpisodes :: Int           -- ^ Number of episodes to play
                      , horizonT    :: Int           -- ^ Maximum Number of Steps per Episode
-                     , algorithm   :: Algorithm     -- ^ ACiD Algorithm ID
-                     , buffer      :: ReplayMemory  -- ^ ACiD Buffer ID
-                     , aceId       :: Circuit       -- ^ ACE Single-Ended OpAmp ID
-                     , aceBackend  :: PDK           -- ^ ACE Backend / PDK
-                     , space       :: Space         -- ^ Design / Action Space
-                     , variant     :: Int           -- ^ Environment Variant
                      , d           :: Int           -- ^ Policy and Target Update Delay
                      , c           :: Float         -- ^ Noise clipping
                      , γ           :: T.Tensor      -- ^ Discount Factor (Tensor)
@@ -86,16 +78,9 @@ data Params = Params { verbose     :: Bool          -- ^ Print verbose debug out
 -- | Params JSON Parse Instance
 instance FromJSON Params where
   parseJSON (Object v) = do Params 
-    <$>             v .: "verbose"      .!= Default.verbose     -- True
-    <*>             v .: "rng-seed"     .!= Default.rngSeed     -- 666
-    <*>             v .: "num-episodes" .!= Default.numEpisodes -- 100
-    <*>             v .: "horizon"      .!= Default.horizonT    -- 50
-    <*>             v .: "algorithm"    .!= TD3
-    <*>             v .: "buffer"       .!= HER
-    <*>             v .: "ace-id"       .!= OP2
-    <*>             v .: "ace-backend"  .!= XH035
-    <*>             v .: "space"        .!= Electric
-    <*>             v .: "variant"      .!= 0
+    <$>             v .: "rng-seed"     .!= Default.rngSeed       -- 666
+    <*>             v .: "num-episodes" .!= Default.numEpisodes   -- 100
+    <*>             v .: "horizon"      .!= Default.horizonT      -- 50
     <*>             v .: "d"            .!= Default.d             -- 2
     <*>             v .: "c"            .!= Default.c             -- 0.5
     <*> (read'' <$> v .: "γ")           .!= Default.γ             -- Tensor [] 0.99
@@ -126,16 +111,9 @@ instance FromJSON Params where
 
 -- | JSON Params Parse Instance
 instance ToJSON Params where
-  toJSON Params{..} = object [ "verbose"      .=                 verbose     
-                             , "rng-seed"     .=                 rngSeed     
+  toJSON Params{..} = object [ "rng-seed"     .=                 rngSeed     
                              , "num-episodes" .=                 numEpisodes 
                              , "horizon"      .=                 horizonT    
-                             , "algorithm"    .= show            algorithm   
-                             , "buffer"       .= show            buffer      
-                             , "ace-id"       .= show            aceId       
-                             , "ace-backend"  .= show            aceBackend  
-                             , "space"        .= show            space       
-                             , "variant"      .=                 variant     
                              , "d"            .=                 d
                              , "c"            .=                 c
                              , "γ"            .= show (T.asValue γ      :: Float)

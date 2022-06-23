@@ -30,9 +30,9 @@ library
       ACiD
       ALG
       ALG.TD3
-      CFG
-      CFG.Default
       CKT
+      HyperParameters
+      HyperParameters.Defaults
       Lib
       MLFlow.Extensions
       RPB
