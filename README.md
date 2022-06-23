@@ -25,14 +25,21 @@ Here is the short help for the CLI and available options:
 ```
 ACiD
 
-Usage: acid-exe [-H|--circus-host HOST] [-P|--circus-port PORT] [-f|--path FILE]
-                [-T|--tracking-host HOST] [-R|--tracking-port PORT]
-                [-m|--mode MODE] [-c|--cfg YAML]
+Usage: acid-exe [-H|--circus-host HOST] [-P|--circus-port PORT]
+                [-i|--circus-id ID] [-p|--circus-backend PDK]
+                [-s|--circus-space SPACE] [-l|--algorithm ALG] [-b|--buffer BUF]
+                [-f|--path FILE] [-T|--tracking-host HOST]
+                [-R|--tracking-port PORT] [-m|--mode MODE] [-c|--cfg YAML]
   Artificial Circuit Designer / Circus Clown
 
 Available options:
   -H,--circus-host HOST    Circus server host address (default: "localhost")
   -P,--circus-port PORT    Circus server port (default: "6007")
+  -i,--circus-id ID        Circuit ID (default: "op2")
+  -p,--circus-backend PDK  Backend / PDK (default: "xh035")
+  -s,--circus-space SPACE  Design Space (default: "elec")
+  -l,--algorithm ALG       RL Algorithm (default: "TD3")
+  -b,--buffer BUF          Replay Buffer (default: "HER")
   -f,--path FILE           Base Path for Model Checkpoint. Default is ./models
                            (default: "./models")
   -T,--tracking-host HOST  MLFlow tracking server host address
