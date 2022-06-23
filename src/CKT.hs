@@ -196,24 +196,36 @@ observationSpace addr = do
 recoverLast :: CircusUrl -> IO (Observation [[Float]])
 recoverLast addr = fromJust . decodeStrict <$> get addr "restore_last"
 
--- | Reset Environment at given URL
-reset'' :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
-reset'' addr  []  = fromJust . decodeStrict <$> get  addr "reset"
-reset'' addr mask = fromJust . decodeStrict <$> post addr "reset" msk
+-- | I am ashamed, but sometimes it takes another try i guess
+tryReset :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
+tryReset addr mask | null mask = get  addr "reset"     >>= retry . decodeStrict
+                   | otherwise = post addr "reset" msk >>= retry . decodeStrict
   where
+    retry :: Maybe (Observation [[Float]]) -> IO (Observation [[Float]])
+    retry (Just o) = pure o
+    retry Nothing  = do 
+        putStrLn "reset failed, trying again ..."
+        tryReset addr mask
     msk = toJSON (M.fromList [("env_mask", mask)] :: (M.Map String [Bool]))
+
+-- | Reset Environment at given URL
+--reset'' :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
+--reset'' addr  []  = fromJust . decodeStrict <$> get  addr "reset"
+--reset'' addr mask = fromJust . decodeStrict <$> post addr "reset" msk
+--  where
+--    msk = toJSON (M.fromList [("env_mask", mask)] :: (M.Map String [Bool]))
 
 -- | Reset Environments and get (observation, achieved_goal, desired_goal)
 reset :: CircusUrl -> IO (T.Tensor, T.Tensor, T.Tensor)
 reset addr = do
     (Observation observation achieved desired _ _ _) 
-            <- fmap T.asTensor <$> reset'' addr []
+            <- fmap T.asTensor <$> tryReset addr []
     pure (observation, achieved, desired)
 
 -- | Reset subset of environments with given mask
 reset' :: CircusUrl -> T.Tensor -> IO (T.Tensor, T.Tensor, T.Tensor)
 reset' addr msk = do
-    obs <- fmap T.asTensor <$> reset'' addr msk'
+    obs <- fmap T.asTensor <$> tryReset addr msk'
     pure (observation obs, achievedGoal obs, desiredGoal obs)
   where
     msk' = T.asValue . T.squeezeAll $ msk :: [Bool]
