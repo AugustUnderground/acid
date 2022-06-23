@@ -28,6 +28,36 @@ args = Args <$> strOption ( long "circus-host"
                          <> showDefault 
                          <> value "6007"
                          <> help "Circus server port" )
+            <*> strOption ( long "circus-id" 
+                         <> short 'i'
+                         <> metavar "ID" 
+                         <> showDefault 
+                         <> value "op2"
+                         <> help "Circuit ID" )
+            <*> strOption ( long "circus-backend" 
+                         <> short 'p'
+                         <> metavar "PDK" 
+                         <> showDefault 
+                         <> value "xh035"
+                         <> help "Backend / PDK" )
+            <*> strOption ( long "circus-space" 
+                         <> short 's'
+                         <> metavar "SPACE" 
+                         <> showDefault 
+                         <> value "elec"
+                         <> help "Design Space" )
+            <*> strOption ( long "algorithm" 
+                         <> short 'l'
+                         <> metavar "ALG" 
+                         <> showDefault 
+                         <> value "TD3"
+                         <> help "RL Algorithm" )
+            <*> strOption ( long "buffer" 
+                         <> short 'b'
+                         <> metavar "BUF" 
+                         <> showDefault 
+                         <> value "HER"
+                         <> help "Replay Buffer" )
             <*> strOption ( long "path"
                          <> short 'f'
                          <> metavar "FILE"

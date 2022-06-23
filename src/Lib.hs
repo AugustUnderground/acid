@@ -57,13 +57,18 @@ data Mode = Train   -- ^ Start Agent Training
           deriving (Eq, Show, Read)
 
 -- | Command Line Arguments
-data Args = Args { cktHost   :: String -- ^ Circus Server Host Address
-                 , cktPort   :: String -- ^ Circus Server Port
-                 , path      :: String -- ^ Checkpoint Base Path
-                 , mlfHost   :: String -- ^ MLFlow Server Host Address
-                 , mlfPort   :: String -- ^ MLFlow Server Port
-                 , mode      :: String -- ^ Run Mode
-                 , config    :: String -- ^ File Path to config.yaml
+data Args = Args { cktHost    :: String -- ^ Circus Server Host Address
+                 , cktPort    :: String -- ^ Circus Server Port
+                 , cktId      :: String -- ^ ACE Circuit ID
+                 , cktBackend :: String -- ^ ACE Backend / PDK
+                 , cktSpace   :: String -- ^ Design Space
+                 , algorithm  :: String -- ^ RL Algorithm
+                 , buffer     :: String -- ^ Replay Buffer
+                 , path       :: String -- ^ Checkpoint Base Path
+                 , mlfHost    :: String -- ^ MLFlow Server Host Address
+                 , mlfPort    :: String -- ^ MLFlow Server Port
+                 , mode       :: String -- ^ Run Mode
+                 , config     :: String -- ^ File Path to config.yaml
                  } deriving (Show)
 
 -- | Type Alias for Transition Tuple (state, action, reward, state', done)

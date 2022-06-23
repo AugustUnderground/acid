@@ -13,7 +13,7 @@ import           Control.Monad
 import           MLFlow.Extensions
 import           Lib
 import           CKT                 hiding (url)
-import           CFG                 hiding (d)
+import           HyperParameters     hiding (d)
 import           ALG
 import qualified Torch               as T
 import qualified Torch.Extensions    as T
@@ -146,7 +146,7 @@ collectStep p@Params{..} url tracker iter t agent s buf = do
     
     s_ <- if T.any d then fst3 <$> reset' url d else pure s'
 
-    when (verbose && iter % 10 == 0) do
+    when (iter % 10 == 0) do
         putStrLn $ "\tAverage Reward: \t" ++ show (T.mean r)
 
     collectStep p url tracker iter t' agent s_ buf'

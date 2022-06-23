@@ -10,7 +10,7 @@ module ACiD where
 import           Control.Monad
 import           Lib
 import           CKT
-import           CFG
+import           HyperParameters
 import           MLFlow
 import           MLFlow.Extensions
 import           ALG
@@ -32,7 +32,7 @@ eval p@Params{..} addr tracker agent episode t obs dones | T.all dones = pure ()
         success = successRate . T.logicalOr dones . T.logicalAnd done 
                 $ T.ge reward 0.0
     
-    when (verbose && t % 10 == 0) do
+    when (t % 10 == 0) do
         putStrLn $ "\tStep " ++ show t ++ ":"
         putStrLn $ "\t\tSuccess Rate: " ++ show success ++ "%"
 
@@ -49,11 +49,10 @@ train :: (Agent a, ReplayBuffer b) => Params -> CircusUrl -> Tracker -> String
 train _            _    _       path 0       _   agent = void $ saveAgent path agent
 train p@Params{..} addr tracker path episode buf agent = do
 
-    when verbose do
-        let isRandom = if iter % explFreq == 0 
-                          then "Random Exploration" 
-                          else "Policy Exploitation"
-        putStrLn $ "Episode " ++ show iter ++ " (" ++ isRandom ++ "):"
+    let isRandom = if iter % explFreq == 0 
+                      then "Random Exploration" 
+                      else "Policy Exploitation"
+    putStrLn $ "Episode " ++ show iter ++ " (" ++ isRandom ++ "):"
 
     buf'  <-  push bufferSize buf 
              <$> collectExperience p addr tracker iter agent
@@ -107,23 +106,15 @@ run :: Args -> IO ()
 run Args{..} = do
     params <- parseConfig config
 
-    let alg = show . algorithm  $ params
-        buf = show . buffer     $ params
-        ace = show . aceId      $ params
-        pdk = show . aceBackend $ params
-        var = show . variant    $ params
-        spc = show . space      $ params
-
     path'   <- if mode' == Train 
-                  then createModelArchiveDir' path alg ace pdk var spc
+                  then createModelArchiveDir' path algorithm cktId 
+                                              cktBackend "0" cktSpace
                   else pure path
 
-    let url' = url cktHost cktPort ace pdk spc var
+    let url' = url cktHost cktPort cktId cktBackend cktSpace "0"
         uri' = trackingURI mlfHost mlfPort
-        alg' = algorithm params
-        buf' = buffer    params
-        exp' = alg ++ "-" ++ buf ++ "-" ++ ace ++ "-" ++ pdk
-                   ++ "-" ++ spc ++ "-v" ++ var ++ "-" ++ mode
+        exp' = algorithm ++ "-" ++ buffer ++ "-" ++ cktId ++ "-" ++ cktBackend
+                         ++ "-" ++ cktSpace ++ "-v" ++ var ++ "-" ++ mode
     
     nEnvs   <- numEnvs url'
     tracker <- mkTracker uri' exp' >>= newRuns' nEnvs
@@ -131,4 +122,7 @@ run Args{..} = do
     run' params url' tracker path' mode' alg' buf'
     endRuns' tracker
   where
-    mode'   = read mode :: Mode
+    mode' = read mode      :: Mode
+    alg'  = read algorithm :: Algorithm
+    buf'  = read buffer    :: ReplayMemory
+    var   = "0"

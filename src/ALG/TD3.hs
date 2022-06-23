@@ -19,7 +19,7 @@ import           Lib
 import qualified ALG
 import           MLFlow.Extensions
 import           CKT                              hiding (url)
-import           CFG
+import           HyperParameters
 import           Control.Monad
 import           GHC.Generics                     hiding (Meta)
 import qualified Torch                     as T
@@ -218,7 +218,7 @@ updateStep Params{..} iter epoch agent@Agent{..} tracker trans = do
 
     (θOnline', θOptim') <- T.runStep θ θOptim jQ ηθ
 
-    when (verbose && epoch % 10 == 0) do
+    when (epoch % 10 == 0) do
         putStrLn $ "\tEpoch " ++ show epoch ++ ":"
         putStrLn $ "\t\tΘ Loss:\t" ++ show jQ
 
@@ -240,7 +240,7 @@ updateStep Params{..} iter epoch agent@Agent{..} tracker trans = do
     iter' = map ((iter * numEpochs) +) $ range numEpochs
     updateActor :: IO (PolicyNet, T.Adam)
     updateActor = do
-        when (verbose && epoch % 10 == 0) do
+        when (epoch % 10 == 0) do
             putStrLn $ "\t\tφ Loss:\t" ++ show jφ
         _ <- trackLoss tracker ((iter' !! epoch) // d)
                        "Actor_Loss" (T.asValue jφ :: Float)
@@ -250,8 +250,7 @@ updateStep Params{..} iter epoch agent@Agent{..} tracker trans = do
         jφ    = T.negative . T.mean $ v
     syncTargets :: IO (PolicyNet, CriticNet)
     syncTargets = do
-        when verbose do
-            putStrLn "\t\tUpdating Targets."
+        putStrLn "\t\tUpdating Targets."
         φTarget' <- softSync τ φ' φ
         θTarget' <- softSync τ θ' θ
         pure (φTarget', θTarget')

@@ -193,20 +193,8 @@ observationSpace addr = do
     fields = ["observation", "achieved_goal", "desired_goal"]
 
 -- | Restart Environment and Restore last state
-recoverLast :: CircusUrl -> IO (Observation [[Float]])
-recoverLast addr = fromJust . decodeStrict <$> get addr "restore_last"
-
--- | I am ashamed, but sometimes it takes another try i guess
-tryReset :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
-tryReset addr mask | null mask = get  addr "reset"     >>= retry . decodeStrict
-                   | otherwise = post addr "reset" msk >>= retry . decodeStrict
-  where
-    retry :: Maybe (Observation [[Float]]) -> IO (Observation [[Float]])
-    retry (Just o) = pure o
-    retry Nothing  = do 
-        putStrLn "reset failed, trying again ..."
-        tryReset addr mask
-    msk = toJSON (M.fromList [("env_mask", mask)] :: (M.Map String [Bool]))
+-- recoverLast :: CircusUrl -> IO (Observation [[Float]])
+-- recoverLast addr = fromJust . decodeStrict <$> get addr "restore_last"
 
 -- | Reset Environment at given URL
 --reset'' :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
@@ -214,6 +202,33 @@ tryReset addr mask | null mask = get  addr "reset"     >>= retry . decodeStrict
 --reset'' addr mask = fromJust . decodeStrict <$> post addr "reset" msk
 --  where
 --    msk = toJSON (M.fromList [("env_mask", mask)] :: (M.Map String [Bool]))
+
+-- | Recover Last state
+--recover :: CircusUrl -> Maybe (Observation [[Float]]) 
+--        -> IO (Observation [[Float]])
+--recover _    (Just obs) = pure obs
+--recover addr Nothing    = recoverLast addr
+
+-- | Take an action in a given Environment and get the new observation
+-- step' :: CircusUrl -> Action [[Float]] -> IO (Observation [[Float]])
+-- step' addr action' = post addr "step" (toJSON action') 
+--                         >>= recover addr . decodeStrict
+
+-- | Retry the last function (step / reset)
+retry :: IO (Observation [[Float]]) -> Maybe (Observation [[Float]]) 
+      -> IO (Observation [[Float]])
+retry _ (Just o) = pure o
+retry fun Nothing  = do 
+    putStrLn "reset failed, trying again ..."
+    fun 
+
+-- | Try to reset until it succeeds (you have to kill if it doesn't)
+tryReset :: CircusUrl -> [Bool] -> IO (Observation [[Float]])
+tryReset addr mask | null mask = get  addr "reset"     >>= retry fun' . decodeStrict
+                   | otherwise = post addr "reset" msk >>= retry fun' . decodeStrict
+  where
+    fun' = tryReset addr mask
+    msk = toJSON (M.fromList [("env_mask", mask)] :: (M.Map String [Bool]))
 
 -- | Reset Environments and get (observation, achieved_goal, desired_goal)
 reset :: CircusUrl -> IO (T.Tensor, T.Tensor, T.Tensor)
@@ -238,22 +253,18 @@ randomAction' addr = fromJust . decodeStrict <$> get addr "random_action"
 randomAction :: CircusUrl -> IO T.Tensor
 randomAction addr = action . fmap T.asTensor <$> randomAction' addr
 
--- | Recover Last state
-recover :: CircusUrl -> Maybe (Observation [[Float]]) 
-        -> IO (Observation [[Float]])
-recover _    (Just obs) = pure obs
-recover addr Nothing    = recoverLast addr
-
--- | Take an action in a given Environment and get the new observation
-step' :: CircusUrl -> Action [[Float]] -> IO (Observation [[Float]])
-step' addr action' = post addr "step" (toJSON action') 
-                        >>= recover addr . decodeStrict
+-- | Try to step until it succeeds (you have to kill if it doesn't)
+tryStep :: CircusUrl -> Action [[Float]] -> IO (Observation [[Float]])
+tryStep addr action' = post addr "step" (toJSON action') 
+                            >>= retry fun' . decodeStrict
+  where
+    fun' = tryStep addr action'
 
 -- | Shorthand for taking a Tensor action and returning Tensors
 step :: CircusUrl -> T.Tensor 
      -> IO (T.Tensor, T.Tensor, T.Tensor, T.Tensor, T.Tensor)
 step addr action' = do
-    obs <- fmap T.asTensor <$> step' addr action''
+    obs <- fmap T.asTensor <$> tryStep addr action''
     pure ( observation obs, achievedGoal obs, desiredGoal obs
          , T.asTensor . fromJust . reward $ obs
          , T.asTensor . fromJust . done   $ obs )

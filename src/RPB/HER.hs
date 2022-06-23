@@ -21,7 +21,7 @@ import           Lib
 import qualified RPB
 import           ALG
 import           CKT                            hiding (url)
-import           CFG                            hiding (d)
+import           HyperParameters                hiding (d)
 import           MLFlow.Extensions
 import           Control.Monad
 import           Control.Applicative            hiding (empty)
@@ -209,11 +209,11 @@ collectStep p@Params{..} url tracker iter t agent s g buf = do
 
     (!s',_,!g') <- if T.any d then reset' url d else pure (n, ag, dg)
 
-    when (verbose && (iter' !! t') % 10 == 0) do
+    when ((iter' !! t') % 10 == 0) do
         putStrLn $ "\tStep " ++ show (iter' !! t') ++ ":"
         putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean . rewards $ buf')
 
-    when (verbose && T.any d) do
+    when (T.any d) do
         let ds = T.squeezeAll . T.nonzero $ d
         putStrLn $ "\t\tDone with: " ++ show ds ++ "\n\t\t\tAfter " 
                     ++  show (iter' !! t') ++ " steps."

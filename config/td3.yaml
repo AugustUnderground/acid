@@ -4,19 +4,6 @@
 # Hyper Parameters for TD3 + HER
 
 ##############################################################################
-##  General Settings / Meta Information
-##############################################################################
-
-verbose:      true     # Print verbose debug output
-rng-seed:     666      # Random seed for reproducibility
-algorithm:    TD3      # ACiD Algorithm ID
-buffer:       HER      # ACiD Buffer ID
-ace-id:       OP2      # ACE Single-Ended OpAmp ID
-ace-backend:  XH035    # ACE Backend / PDK
-space:        Electric # Design / Action Space
-variant:      0        # Environment Variant
-
-##############################################################################
 ##  Hyper Parameters
 ##############################################################################
 

@@ -6,7 +6,7 @@ module ALG where
 import Torch             (Tensor)
 import MLFlow.Extensions (Tracker)
 import CKT               (CircusUrl)
-import CFG
+import HyperParameters
 import Lib
 
 -- | Replay Buffer Interface
