@@ -29,7 +29,8 @@ eval p@Params{..} addr tracker agent episode t obs dones | T.all dones = pure ()
 
     let dones'  = T.logicalOr done dones
         obs'    = T.cat (T.Dim 1) [state', goal]
-        success = successRate . T.logicalOr dones . T.logicalAnd done $ T.ge reward 0.0
+        success = successRate . T.logicalOr dones . T.logicalAnd done 
+                $ T.ge reward 0.0
     
     when (verbose && t % 10 == 0) do
         putStrLn $ "\tStep " ++ show t ++ ":"
@@ -128,5 +129,6 @@ run Args{..} = do
     tracker <- mkTracker uri' exp' >>= newRuns' nEnvs
 
     run' params url' tracker path' mode' alg' buf'
+    endRuns' tracker
   where
     mode'   = read mode :: Mode
