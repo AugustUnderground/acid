@@ -176,13 +176,28 @@ Eval :: Mode
 
 -- | Command Line Arguments
 data Args
-Args :: String -> String -> String -> String -> String -> String -> String -> Args
+Args :: String -> String -> String -> String -> String -> String -> String -> String -> String -> String -> String -> String -> Args
 
 -- | Circus Server Host Address
 [cktHost] :: Args -> String
 
 -- | Circus Server Port
 [cktPort] :: Args -> String
+
+-- | ACE Circuit ID
+[cktId] :: Args -> String
+
+-- | ACE Backend / PDK
+[cktBackend] :: Args -> String
+
+-- | Design Space
+[cktSpace] :: Args -> String
+
+-- | RL Algorithm
+[algorithm] :: Args -> String
+
+-- | Replay Buffer
+[buffer] :: Args -> String
 
 -- | Checkpoint Base Path
 [path] :: Args -> String
@@ -387,13 +402,7 @@ actionSpace :: CircusUrl -> IO Int
 -- | Get the number of Environments from the given Circus Server instance
 observationSpace :: CircusUrl -> IO (Int, Int, Int)
 
--- | Reset Environment at given URL reset'' :: CircusUrl -&gt; [Bool] -&gt;
---   IO (Observation [[Float]]) reset'' addr [] = fromJust . decodeStrict
---   <a>$</a> get addr "reset" reset'' addr mask = fromJust . decodeStrict
---   <a>$</a> post addr "reset" msk where msk = toJSON (M.fromList
---   [("env_mask", mask)] :: (M.Map String [Bool]))
---   
---   Reset Environments and get (observation, achieved_goal, desired_goal)
+-- | Reset Environments and get (observation, achieved_goal, desired_goal)
 reset :: CircusUrl -> IO (Tensor, Tensor, Tensor)
 
 -- | Reset subset of environments with given mask
@@ -561,10 +570,7 @@ instance GHC.Show.Show MLFlow.Extensions.Tracker
 
 
 -- | Twin Delayed Deep Deterministic Policy Gradient Algorithm Defaults
-module CFG.Default
-
--- | Print verbose debug output
-verbose :: Bool
+module HyperParameters.Defaults
 
 -- | Number of episodes to play
 numEpisodes :: Int
@@ -652,8 +658,8 @@ evalFreq :: Int
 k :: Int
 
 
--- | YAML Configuration Parser
-module CFG
+-- | Hyper Parameter Configuration
+module HyperParameters
 
 -- | Read a Tensor from float
 read' :: Float -> Maybe Tensor
@@ -669,10 +675,7 @@ parseConfig :: FilePath -> IO Params
 
 -- | Configuration Parameters Information
 data Params
-Params :: Bool -> Int -> Int -> Int -> Algorithm -> ReplayMemory -> Circuit -> PDK -> Space -> Int -> Int -> Float -> Tensor -> Tensor -> Int -> Float -> Float -> Tensor -> Tensor -> Float -> Int -> Float -> Tensor -> Tensor -> Float -> Float -> Float -> Int -> Strategy -> Float -> Float -> Int -> Int -> Int -> Int -> Int -> Params
-
--- | Print verbose debug output
-[verbose] :: Params -> Bool
+Params :: Int -> Int -> Int -> Int -> Float -> Tensor -> Tensor -> Int -> Float -> Float -> Tensor -> Tensor -> Float -> Int -> Float -> Tensor -> Tensor -> Float -> Float -> Float -> Int -> Strategy -> Float -> Float -> Int -> Int -> Int -> Int -> Int -> Params
 
 -- | Random seed for reproducibility
 [rngSeed] :: Params -> Int
@@ -682,24 +685,6 @@ Params :: Bool -> Int -> Int -> Int -> Algorithm -> ReplayMemory -> Circuit -> P
 
 -- | Maximum Number of Steps per Episode
 [horizonT] :: Params -> Int
-
--- | ACiD Algorithm ID
-[algorithm] :: Params -> Algorithm
-
--- | ACiD Buffer ID
-[buffer] :: Params -> ReplayMemory
-
--- | ACE Single-Ended OpAmp ID
-[aceId] :: Params -> Circuit
-
--- | ACE Backend / PDK
-[aceBackend] :: Params -> PDK
-
--- | Design / Action Space
-[space] :: Params -> Space
-
--- | Environment Variant
-[variant] :: Params -> Int
 
 -- | Policy and Target Update Delay
 [d] :: Params -> Int
@@ -778,10 +763,10 @@ Params :: Bool -> Int -> Int -> Int -> Algorithm -> ReplayMemory -> Circuit -> P
 
 -- | Mini batch size
 [batchSize] :: Params -> Int
-instance GHC.Show.Show CFG.Params
-instance GHC.Generics.Generic CFG.Params
-instance Data.Aeson.Types.FromJSON.FromJSON CFG.Params
-instance Data.Aeson.Types.ToJSON.ToJSON CFG.Params
+instance GHC.Show.Show HyperParameters.Params
+instance GHC.Generics.Generic HyperParameters.Params
+instance Data.Aeson.Types.FromJSON.FromJSON HyperParameters.Params
+instance Data.Aeson.Types.ToJSON.ToJSON HyperParameters.Params
 
 
 -- | General Replay Buffer Types and TypeClasses
