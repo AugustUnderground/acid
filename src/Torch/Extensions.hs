@@ -11,7 +11,7 @@ import           GHC.Float                                 (float2Double)
 import qualified Torch                               as T
 import qualified Torch.Lens                          as TL
 import qualified Torch.Functional.Internal           as T  (where', nan_to_num, repeatInterleave)
-import qualified Torch.Internal.Managed.Type.Context as T  (manual_seed_L)
+import qualified Torch.Internal.Managed.Type.Context as T  (manual_seed_L, get_manual_seed)
 
 ------------------------------------------------------------------------------
 -- Convenience / Syntactic Sugar
@@ -98,6 +98,10 @@ boolMask' len idx = mask
 -- | Manually set RNG Seed
 manualSeed :: Int -> IO ()
 manualSeed = T.manual_seed_L . toEnum
+
+-- | Get the current RNG Seed
+currentSeed :: IO Int
+currentSeed = fromEnum <$> T.get_manual_seed
 
 ------------------------------------------------------------------------------
 -- Data Conversion
