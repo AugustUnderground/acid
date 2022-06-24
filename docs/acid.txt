@@ -54,6 +54,9 @@ boolMask' :: Int -> Tensor -> Tensor
 -- | Manually set RNG Seed
 manualSeed :: Int -> IO ()
 
+-- | Get the current RNG Seed
+currentSeed :: IO Int
+
 -- | GPU 1
 gpu :: Device
 
