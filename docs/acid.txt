@@ -51,6 +51,9 @@ boolMask :: Int -> [Int] -> Tensor
 -- | Create a Boolean Mask Tensor from index Tensor
 boolMask' :: Int -> Tensor -> Tensor
 
+-- | Manually set RNG Seed
+manualSeed :: Int -> IO ()
+
 -- | GPU 1
 gpu :: Device
 
