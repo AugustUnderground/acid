@@ -105,6 +105,8 @@ run' _ _    _       _    _     _   _  = error "Not Implemented"
 run :: Args -> IO ()
 run Args{..} = do
     params <- parseConfig config
+    
+    T.manualSeed $ rngSeed params
 
     path'   <- if mode' == Train 
                   then createModelArchiveDir' path algorithm cktId 

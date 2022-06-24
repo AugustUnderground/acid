@@ -7,10 +7,11 @@
 -- | Extensions to Torch
 module Torch.Extensions where
 
-import           GHC.Float                       (float2Double)
-import qualified Torch                     as T
-import qualified Torch.Lens                as TL
-import qualified Torch.Functional.Internal as T  (where', nan_to_num, repeatInterleave)
+import           GHC.Float                                 (float2Double)
+import qualified Torch                               as T
+import qualified Torch.Lens                          as TL
+import qualified Torch.Functional.Internal           as T  (where', nan_to_num, repeatInterleave)
+import qualified Torch.Internal.Managed.Type.Context as T  (manual_seed_L)
 
 ------------------------------------------------------------------------------
 -- Convenience / Syntactic Sugar
@@ -93,6 +94,10 @@ boolMask' len idx = mask
     idx' = T.squeezeAll idx
     mask = T.anyDim (T.Dim 0) False 
          $ T.eq (T.arange' 0 len 1) (T.reshape [-1,1] idx')
+
+-- | Manually set RNG Seed
+manualSeed :: Int -> IO ()
+manualSeed = T.manual_seed_L . toEnum
 
 ------------------------------------------------------------------------------
 -- Data Conversion
