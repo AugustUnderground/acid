@@ -1,0 +1,41 @@
+# ACiD Configuration
+#
+# Launch circus server: 
+#   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op2 --pdk xh035 --step 30 --space elec
+#   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op1 --pdk xh035 --step 30 --space elec
+#   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op8 --pdk xh035 --step 30 --space elec
+#   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op2 --pdk xh035 --step 30 --space geom
+#   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op1 --pdk xh035 --step 30 --space geom
+#   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op8 --pdk xh035 --step 30 --space geom
+#   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op8 --pdk xh018 --step 30 --space elec
+#
+
+d:            2
+c:            0.5
+γ:            0.99
+τ:            5.0e-3
+decay:        1.0e5
+σ-min:        1.0
+σ-max:        1.0
+σ-eval:       0.2
+σ-act:        0.1
+σ-clip:       0.5
+hidden-dim:   256
+w-init:       3.0e-4
+ηφ:           1.0e-3
+ηθ:           1.0e-3
+β1:           0.9
+β2:           0.99
+lrelu-slope:  0.01
+k:            4
+strategy:     Future
+action-low:   -1.0
+action-high:  1.0
+num-episodes: 30
+horizon:      30
+num-epochs:   40
+expl-freq:    10
+eval-freq:    5
+buffer-size:  1.0e6
+batch-size:   256
+rng-seed:     666

@@ -5,32 +5,32 @@
 #   $ carnival --num 8 --goals a_0 ugbw idd pm --env op1 --pdk xh035 --step 30 --space geom
 #
 
-d:            2      # Policy and Target Update Delay
-c:            0.5    # Noise clipping
-γ:            0.99   # Discount Factor (Tensor)
-τ:            5.0e-3 # Soft Update coefficient ("polyak") τ ∈ [0,1]
-decay:        1.0e5  # Decay Period
-σ-min:        1.0    # Noise Clipping Minimum
-σ-max:        1.0    # Noise Clipping Maximum
-σ-eval:       0.2    # Evaluation Noise standard deviation (σ~) (Tensor)
-σ-act:        0.1    # Action Noise standard deviation (Tensor)
-σ-clip:       0.5    # Noise Clipping
-hidden-dim:   256    # Number of units per hidden layer
-w-init:       3.0e-4 # Initial weights
-ηφ:           1.0e-3 # Actor Learning Rate (Tensor)
-ηθ:           1.0e-3 # Critic Learning Rate (Tensor)
-β1:           0.9    # ADAM Hyper Parameter β1
-β2:           0.99   # ADAM Hyper Parameter β2
-lrelu-slope:  0.01   # Leaky ReLU Slope
-k:            4      # Number of Additional Targets to sample
-strategy:     Future # Goal Sampling Strategy
-action-low:   -1.0   # Action space lower bound
-action-high:  1.0    # Action space upper bound
-num-episodes: 30     # Number of episodes to play
-horizon:      30     # Maximum Number of Steps per Episode
-num-epochs:   40     # Number of epochs to train
-expl-freq:    10     # Frequency of random exploration episodes
-eval-freq:    5      # Frequency of random exploration episodes
-buffer-size:  1.0e6  # Replay Buffer Size
-batch-size:   256    # Mini batch size
-rng-seed:     666    # Random Seed
+d:            2
+c:            0.5
+γ:            0.99
+τ:            5.0e-3
+decay:        1.0e5
+σ-min:        1.0
+σ-max:        1.0
+σ-eval:       0.2
+σ-act:        0.1
+σ-clip:       0.5
+hidden-dim:   256
+w-init:       3.0e-4
+ηφ:           1.0e-3
+ηθ:           1.0e-3
+β1:           0.9
+β2:           0.99
+lrelu-slope:  0.01
+k:            4
+strategy:     Future
+action-low:   -1.0
+action-high:  1.0
+num-episodes: 30
+horizon:      30
+num-epochs:   40
+expl-freq:    10
+eval-freq:    5
+buffer-size:  1.0e6
+batch-size:   256
+rng-seed:     666
