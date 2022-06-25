@@ -4,6 +4,10 @@
 #   $ carnival --num 8 --goals a_0 ugbw idd pm --env op1 --pdk xh035 --step 30 --space elec
 #   $ carnival --num 8 --goals a_0 ugbw idd pm --env op1 --pdk xh035 --step 30 --space geom
 #
+# Launch acid:
+#   $ stack exec -- acid-exe -c ./config/autockt.yaml -l TD3 -b HER -i op1 -p xh035 -s elec
+#   $ stack exec -- acid-exe -c ./config/autockt.yaml -l TD3 -b HER -i op1 -p xh035 -s geom
+#
 
 d:            2
 c:            0.5

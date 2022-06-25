@@ -9,6 +9,15 @@
 #   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op8 --pdk xh035 --step 30 --space geom
 #   $ carnival --num 32 --goals a_0 ugbw idd pm cmrr psrr_p voff_stat A --env op8 --pdk xh018 --step 30 --space elec
 #
+# Launch acid:
+#   $ stack exec -- acid-exe -c ./config/acid.yaml -l TD3 -b HER -i op2 -p xh035 -s elec
+#   $ stack exec -- acid-exe -c ./config/acid.yaml -l TD3 -b HER -i op1 -p xh035 -s elec
+#   $ stack exec -- acid-exe -c ./config/acid.yaml -l TD3 -b HER -i op8 -p xh035 -s elec
+#   $ stack exec -- acid-exe -c ./config/acid.yaml -l TD3 -b HER -i op2 -p xh035 -s geom
+#   $ stack exec -- acid-exe -c ./config/acid.yaml -l TD3 -b HER -i op1 -p xh035 -s geom
+#   $ stack exec -- acid-exe -c ./config/acid.yaml -l TD3 -b HER -i op8 -p xh035 -s geom
+#   $ stack exec -- acid-exe -c ./config/acid.yaml -l TD3 -b HER -i op8 -p xh018 -s elec -m Evaluate -p ./models/TD3/op8-xh035-elec-v0-YYYYMMDD-HHMMSS
+#
 
 d:            2
 c:            0.5
