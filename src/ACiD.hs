@@ -38,6 +38,7 @@ eval p@Params{..} addr tracker agent episode t obs dones | T.all dones = pure ()
 
     _ <- trackLoss tracker (iter' !! t) "Success" success
 
+    trackEnvState tracker addr t'
     eval p addr tracker agent episode t' obs' dones'
   where
     t'    = t + 1
@@ -52,7 +53,8 @@ train p@Params{..} addr tracker path episode buf agent = do
     let isRandom = if iter % explFreq == 0 
                       then "Random Exploration" 
                       else "Policy Exploitation"
-    putStrLn $ "Episode " ++ show iter ++ " (" ++ isRandom ++ "):"
+    putStrLn $ "Episode " ++ show iter ++ " / " ++ show numEpisodes 
+                          ++ " (" ++ isRandom ++ "):"
 
     buf'  <-  push bufferSize buf 
              <$> collectExperience p addr tracker iter agent
@@ -63,15 +65,15 @@ train p@Params{..} addr tracker path episode buf agent = do
     agent'   <-  updatePolicy p addr tracker iter batches agent 
                     >>= saveAgent path
 
-    when (iter /= 0 && iter % evalFreq == 0) do
-        (state,_,goal) <- reset addr
-        let obs      = T.cat (T.Dim 1) [state, goal]
-            iter'    = iter // evalFreq
-            success' = T.full [head $ T.shape obs] False 
-                     $ T.withDType T.Bool T.defaultOpts
-        putStrLn $ "Policy Evaluation Episode " ++ show iter'
-        eval p addr tracker agent' iter' 0 obs success'
-        pure ()
+    --when (iter /= 0 && iter % evalFreq == 0) do
+    --    (state,_,goal) <- reset addr
+    --    let obs      = T.cat (T.Dim 1) [state, goal]
+    --        iter'    = iter // evalFreq
+    --        success' = T.full [head $ T.shape obs] False 
+    --                 $ T.withDType T.Bool T.defaultOpts
+    --    putStrLn $ "Policy Evaluation Episode " ++ show iter'
+    --    eval p addr tracker agent' iter' 0 obs success'
+    --    pure ()
 
     train p addr tracker path episode' buf' agent'
   where
@@ -97,6 +99,7 @@ run' p addr tracker path Eval  TD3 HER = do
     let obs      = T.cat (T.Dim 1) [state, goal]
         success' = T.full [head $ T.shape obs] False 
                  $ T.withDType T.Bool T.defaultOpts
+    trackEnvState tracker addr 0
     eval p addr tracker agent 0 0 obs success'
     pure()
 run' _ _    _       _    _     _   _  = error "Not Implemented"
