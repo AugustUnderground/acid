@@ -984,7 +984,7 @@ Agent :: PolicyNet -> PolicyNet -> CriticNet -> CriticNet -> Adam -> Adam -> Flo
 -- | Online Critic θ
 [θ] :: Agent -> CriticNet
 
--- | Target Critic θ
+-- | Target Critic θ'
 [θ'] :: Agent -> CriticNet
 
 -- | Policy Optimizer
