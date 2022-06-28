@@ -110,7 +110,7 @@ q' cn o a = fst . T.minDim (T.Dim 1) T.KeepDim . T.cat (T.Dim 1) $ [v1,v2]
 data Agent = Agent { φ      :: PolicyNet   -- ^ Online Policy φ
                    , φ'     :: PolicyNet   -- ^ Target Policy φ'
                    , θ      :: CriticNet   -- ^ Online Critic θ
-                   , θ'     :: CriticNet   -- ^ Target Critic θ
+                   , θ'     :: CriticNet   -- ^ Target Critic θ'
                    , φOptim :: T.Adam      -- ^ Policy Optimizer
                    , θOptim :: T.Adam      -- ^ Critic Optimizer
                    , actLo  :: Float       -- ^ Lower bound of Action space
