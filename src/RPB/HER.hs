@@ -216,8 +216,8 @@ collectStep p@Params{..} url tracker iter t agent s g done buf = do
     (!s',_,!g') <- if T.any d then reset' url d else pure (n, ag, dg)
 
     let buf'  = push bufferSize buf (Buffer s a r n d dg ag)
-        ds    = T.squeezeAll . T.nonzero . T.logicalAnd d $ T.ge r 0.0
-        ds'   = S.fromList $ T.asValue ds :: S.Set Int
+        ds'   = S.fromList . T.asValue . T.squeezeDim 1 . T.nonzero 
+              . T.logicalAnd d $ T.ge r 0.0 :: S.Set Int
         done' = S.union done ds'
 
     when ((iter' !! t') % 10 == 0) do
