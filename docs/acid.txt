@@ -463,7 +463,11 @@ newtype Action a
 Action :: a -> Action a
 [action] :: Action a -> a
 
--- | Shorthand for getting Performance
+-- | Get current State of the Environment currentState :: CircusUrl -&gt;
+--   String -&gt; IO (M.Map Int (M.Map String Float)) currentState addr
+--   route = fromJust . decodeStrict <a>$</a> get addr route
+--   
+--   Shorthand for getting Performance
 currentPerformance :: CircusUrl -> IO (Map Int (Map String Float))
 
 -- | Shorthand for getting Goal
@@ -474,6 +478,9 @@ currentSizing :: CircusUrl -> IO (Map Int (Map String Float))
 
 -- | Shorthand for getting last Action
 lastAction :: CircusUrl -> IO (Map Int (Map String Float))
+
+-- | Get the number of steps
+numSteps :: CircusUrl -> IO (Map Int Float)
 instance Data.Aeson.Types.ToJSON.ToJSON CKT.Circuit
 instance Data.Aeson.Types.FromJSON.FromJSON CKT.Circuit
 instance GHC.Generics.Generic CKT.Circuit
