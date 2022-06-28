@@ -28,6 +28,7 @@ module CKT ( Circuit (..)
            , currentGoal
            , currentSizing
            , lastAction
+           , numSteps
            ) where
 
 import           Lib
@@ -287,9 +288,23 @@ calculateReward addr ag dg = do
                            (T.asValue dg :: [[Float]]) 
                            Nothing Nothing Nothing
 
--- | Get current State of the Environment
+-- | Retry the last function
+retry' :: IO (M.Map Int (M.Map String Float)) -> Maybe (M.Map Int (M.Map String Float)) 
+       -> IO (M.Map Int (M.Map String Float))
+retry' _ (Just o) = pure o
+retry' fun Nothing  = do 
+    putStrLn "Current State failed, trying again ..."
+    fun 
+
+-- | Try to reset until it succeeds (you have to kill if it doesn't)
 currentState :: CircusUrl -> String -> IO (M.Map Int (M.Map String Float))
-currentState addr route = fromJust . decodeStrict <$> get addr route
+currentState addr route = get addr route >>= retry' fun' . decodeStrict
+  where
+    fun' = currentState addr route
+
+-- | Get current State of the Environment
+--currentState :: CircusUrl -> String -> IO (M.Map Int (M.Map String Float))
+--currentState addr route = fromJust . decodeStrict <$> get addr route
 
 -- | Shorthand for getting Performance
 currentPerformance :: CircusUrl -> IO (M.Map Int (M.Map String Float))
@@ -306,3 +321,7 @@ currentSizing addr = currentState addr "current_sizing"
 -- | Shorthand for getting last Action
 lastAction :: CircusUrl -> IO (M.Map Int (M.Map String Float))
 lastAction addr = currentState addr "last_action"
+
+-- | Get the number of steps
+numSteps :: CircusUrl -> IO (M.Map Int Float)
+numSteps addr = fromJust . decodeStrict <$> get addr "num_steps"
