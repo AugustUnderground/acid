@@ -200,6 +200,7 @@ collectStep Params{..} url tracker iter 0 _ _ _ done buf = do
     num <- realToFrac <$> numEnvs url :: IO Float
     let success = done' * 100.0 / num
     _ <- trackLoss tracker iter "Success" success
+    putStrLn $ "\t\tSuccess Rate: \t" ++ show success ++ "%"
     sampleGoals url strategy k buf
   where
     done' = realToFrac $ S.size done :: Float
@@ -223,7 +224,7 @@ collectStep p@Params{..} url tracker iter t agent s g done buf = do
         putStrLn $ "\tStep " ++ show (iter' !! t') ++ ":"
         putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean . rewards $ buf')
 
-    when (T.any d) do
+    when (t < horizonT && T.any d) do
         putStrLn $ "\t\tDone with: " ++ show ds ++ "\n\t\t\tAfter " 
                     ++  show (iter' !! t') ++ " steps."
 
