@@ -40,8 +40,8 @@ k:            4
 strategy:     Future
 action-low:   -1.0
 action-high:  1.0
-num-episodes: 30
-horizon:      30
+num-episodes: 50
+horizon:      50
 num-epochs:   40
 expl-freq:    10
 eval-freq:    5
