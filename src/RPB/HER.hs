@@ -198,12 +198,11 @@ collectStep :: (Agent a) => Params -> CircusUrl -> Tracker -> Int -> Int -> a
             -> IO (Buffer T.Tensor)
 collectStep Params{..} url tracker iter 0 _ _ _ done buf = do
     num <- realToFrac <$> numEnvs url :: IO Float
-    let success = done' * 100.0 / num
+    let done'   = realToFrac $ S.size done :: Float
+        success = done' * 100.0 / num
     _ <- trackLoss tracker iter "Success" success
-    putStrLn $ "\t\tSuccess Rate: \t" ++ show success ++ "%"
+    putStrLn $ "\tSuccess Rate: \t" ++ show success ++ "%"
     sampleGoals url strategy k buf
-  where
-    done' = realToFrac $ S.size done :: Float
 collectStep p@Params{..} url tracker iter t agent s g done buf = do
     a <- if iter % explFreq == 0
             then randomAction url
@@ -211,21 +210,22 @@ collectStep p@Params{..} url tracker iter t agent s g done buf = do
 
     (!n,!ag,!dg,!r,!d) <- step url a
 
-    let buf'  = push bufferSize buf (Buffer s a r n d dg ag)
-        ds    = T.squeezeAll . T.nonzero . T.logicalAnd d $ T.ge r 0.0
-        done' = S.union done . S.fromList $ T.asValue ds :: S.Set Int
-
     trackReward   tracker     (iter' !! t') r
     trackEnvState tracker url (iter' !! t')
 
     (!s',_,!g') <- if T.any d then reset' url d else pure (n, ag, dg)
 
+    let buf'  = push bufferSize buf (Buffer s a r n d dg ag)
+        ds    = T.squeezeAll . T.nonzero . T.logicalAnd d $ T.ge r 0.0
+        ds'   = S.fromList $ T.asValue ds :: S.Set Int
+        done' = S.union done ds'
+
     when ((iter' !! t') % 10 == 0) do
         putStrLn $ "\tStep " ++ show (iter' !! t') ++ ":"
         putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean . rewards $ buf')
 
-    when (t < horizonT && T.any d) do
-        putStrLn $ "\t\tDone with: " ++ show ds ++ "\n\t\t\tAfter " 
+    unless (S.null ds') do
+        putStrLn $ "\t\tDone with: " ++ show ds' ++ "\n\t\t\tAfter "
                     ++  show (iter' !! t') ++ " steps."
 
     collectStep p url tracker iter t' agent s' g' done' buf' 
