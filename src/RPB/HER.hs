@@ -26,6 +26,7 @@ import           MLFlow.Extensions
 import           Control.Monad
 import           Control.Applicative            hiding (empty)
 import           Prelude                        hiding (drop)
+import qualified Data.Set                  as S
 import qualified Torch                     as T
 import qualified Torch.Extensions          as T
 
@@ -193,16 +194,25 @@ sampleGoals url Future k' buf | k' >= bs  = pure buf
 
 -- | Evaluate Policy for T steps and return experience Buffer
 collectStep :: (Agent a) => Params -> CircusUrl -> Tracker -> Int -> Int -> a 
-            -> T.Tensor -> T.Tensor -> Buffer T.Tensor -> IO (Buffer T.Tensor)
-collectStep Params{..} url _ _ 0 _ _ _ buf = sampleGoals url strategy k buf
-collectStep p@Params{..} url tracker iter t agent s g buf = do
+            -> T.Tensor -> T.Tensor -> S.Set Int -> Buffer T.Tensor 
+            -> IO (Buffer T.Tensor)
+collectStep Params{..} url tracker iter 0 _ _ _ done buf = do
+    num <- realToFrac <$> numEnvs url :: IO Float
+    let success = done' * 100.0 / num
+    _ <- trackLoss tracker iter "Success" success
+    sampleGoals url strategy k buf
+  where
+    done' = realToFrac $ S.size done :: Float
+collectStep p@Params{..} url tracker iter t agent s g done buf = do
     a <- if iter % explFreq == 0
             then randomAction url
             else act' agent obs >>= T.detach
 
     (!n,!ag,!dg,!r,!d) <- step url a
 
-    let buf' = push bufferSize buf (Buffer s a r n d dg ag)
+    let buf'  = push bufferSize buf (Buffer s a r n d dg ag)
+        ds    = T.squeezeAll . T.nonzero . T.logicalAnd d $ T.ge r 0.0
+        done' = S.union done . S.fromList $ T.asValue ds :: S.Set Int
 
     trackReward   tracker     (iter' !! t') r
     trackEnvState tracker url (iter' !! t')
@@ -214,11 +224,10 @@ collectStep p@Params{..} url tracker iter t agent s g buf = do
         putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean . rewards $ buf')
 
     when (T.any d) do
-        let ds = T.squeezeAll . T.nonzero $ d
         putStrLn $ "\t\tDone with: " ++ show ds ++ "\n\t\t\tAfter " 
                     ++  show (iter' !! t') ++ " steps."
 
-    collectStep p url tracker iter t' agent s' g' buf'
+    collectStep p url tracker iter t' agent s' g' done' buf' 
   where
     obs = T.cat (T.Dim 1) [s, g]
     iter' = map ((iter * horizonT + 1) +) . reverse $ range horizonT
@@ -230,6 +239,6 @@ collectExperience :: (Agent a) => Params -> CircusUrl -> Tracker -> Int -> a
 collectExperience p@Params{..} url tracker iter agent = do
     (s,_,g) <- reset url
     trackEnvState tracker url (iter * horizonT)
-    collectStep p url tracker iter horizonT agent s g buf
+    collectStep p url tracker iter horizonT agent s g S.empty buf
   where
     buf = empty
