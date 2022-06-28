@@ -109,7 +109,7 @@ currentSeed = fromEnum <$> T.get_manual_seed
 
 -- | GPU 1
 gpu :: T.Device
-gpu = T.Device T.CUDA 1
+gpu = T.Device T.CUDA 0
 
 -- | CPU 0
 cpu :: T.Device
