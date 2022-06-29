@@ -201,7 +201,7 @@ collectStep Params{..} url tracker iter 0 _ _ _ done buf = do
     let done'   = realToFrac $ S.size done :: Float
         success = done' * 100.0 / num
     _ <- trackLoss tracker iter "Success" success
-    putStrLn "\t----------------------------"
+    putStrLn "\t------------------------------"
     putStrLn $ "\tSuccess Rate:\t\t" ++ show success ++ "%"
     sampleGoals url strategy k buf
 collectStep p@Params{..} url tracker iter t agent s g done buf = do
