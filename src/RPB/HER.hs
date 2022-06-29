@@ -221,12 +221,11 @@ collectStep p@Params{..} url tracker iter t agent s g done buf = do
         done' = S.union done ds'
 
     when ((iter' !! t') % 10 == 0) do
-        putStrLn $ "\tStep " ++ show (iter' !! t') ++ ":"
-        putStrLn $ "\t\tAverage Reward: \t" ++ show (T.mean . rewards $ buf')
-
-    unless (S.null ds') do
-        putStrLn $ "\t\tDone with: " ++ show ds' ++ "\n\t\t\tAfter "
-                    ++  show (iter' !! t') ++ " steps."
+        let d'      = realToFrac $ S.size done' :: Float
+            num     = realToFrac . head $ T.shape d :: Float
+            success = d' * 100.0 / num
+        putStrLn $ "\tStep " ++ show t ++  ", Success: \t" 
+                             ++ show success ++ "%"
 
     collectStep p url tracker iter t' agent s' g' done' buf' 
   where
