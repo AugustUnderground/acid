@@ -8,6 +8,7 @@
 module ACiD where
 
 import           Control.Monad
+import qualified Data.Map as M
 import           Lib
 import           CKT
 import           HyperParameters
@@ -21,16 +22,19 @@ import qualified Torch               as T
 import qualified Torch.Extensions    as T
 
 -- | Policy evaluation Episode
-eval :: (Agent a) => Params -> CircusUrl -> Tracker -> a 
-     -> Int -> Int -> T.Tensor -> T.Tensor -> IO ()
-eval p@Params{..} addr tracker agent episode t obs dones | T.all dones = pure ()
-                                                         | otherwise   = do
+eval :: (Agent a) => Params -> CircusUrl -> Tracker -> a -> Int -> Int 
+     -> T.Tensor -> T.Tensor -> T.Tensor -> IO ()
+eval p@Params{..} addr tracker agent episode t obs dones steps | T.all dones = do
+    let numSteps' = M.fromList $ zip [0,1..] (T.asValue steps) :: M.Map Int Float
+    trackNumSteps tracker numSteps'
+                                                               | otherwise  = do
     (!state',_,!goal,!reward,!done) <- step addr $ act'' agent obs
 
     let dones'  = T.logicalOr done dones
         obs'    = T.cat (T.Dim 1) [state', goal]
         success = successRate . T.logicalOr dones . T.logicalAnd done 
                 $ T.ge reward 0.0
+        steps'  = steps + T.logicalNot dones'
     
     when (t % 10 == 0) do
         putStrLn $ "\tStep " ++ show t ++ ":"
@@ -39,7 +43,7 @@ eval p@Params{..} addr tracker agent episode t obs dones | T.all dones = pure ()
     _ <- trackLoss tracker (iter' !! t) "Success" success
 
     trackEnvState tracker addr t'
-    eval p addr tracker agent episode t' obs' dones'
+    eval p addr tracker agent episode t' obs' dones' steps'
   where
     t'    = t + 1
     iter' = map ((episode * horizonT) +) [0..]
@@ -65,16 +69,6 @@ train p@Params{..} addr tracker path episode buf agent = do
     agent'   <-  updatePolicy p addr tracker iter batches agent 
                     >>= saveAgent path
 
-    --when (iter /= 0 && iter % evalFreq == 0) do
-    --    (state,_,goal) <- reset addr
-    --    let obs      = T.cat (T.Dim 1) [state, goal]
-    --        iter'    = iter // evalFreq
-    --        success' = T.full [head $ T.shape obs] False 
-    --                 $ T.withDType T.Bool T.defaultOpts
-    --    putStrLn $ "Policy Evaluation Episode " ++ show iter'
-    --    eval p addr tracker agent' iter' 0 obs success'
-    --    pure ()
-
     train p addr tracker path episode' buf' agent'
   where
     episode' = episode - 1
@@ -88,7 +82,6 @@ run' p@Params{..} addr tracker path Train TD3 HER = do
     (od,gd,_)  <- observationSpace addr
     let obsDim =  od + gd
         buf    =  HER.empty
-
     TD3.mkAgent p obsDim actDim >>= train p addr tracker path numEpisodes buf
 run' p addr tracker path Eval  TD3 HER = do
     actDim     <- actionSpace addr
@@ -96,12 +89,12 @@ run' p addr tracker path Eval  TD3 HER = do
     let obsDim =  od + gd
     agent      <- ALG.loadAgent p path obsDim actDim 0 :: IO TD3.Agent
     (state,_,goal) <- reset addr
-    let obs      = T.cat (T.Dim 1) [state, goal]
-        success' = T.full [head $ T.shape obs] False 
-                 $ T.withDType T.Bool T.defaultOpts
+    let obs    = T.cat (T.Dim 1) [state, goal]
+        dones' = T.full [head $ T.shape obs] False 
+               $ T.withDType T.Bool T.defaultOpts
+        steps' = T.toDType T.Float $ T.onesLike dones'
     trackEnvState tracker addr 0
-    eval p addr tracker agent 0 0 obs success'
-    pure()
+    eval p addr tracker agent 0 0 obs dones' steps'
 run' _ _    _       _    _     _   _  = error "Not Implemented"
 
 -- | Clown School

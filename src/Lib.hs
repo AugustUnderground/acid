@@ -112,6 +112,10 @@ splits []       = []
 fst3 :: (a,b,c) -> a
 fst3 (a,_,_) = a
 
+-- | Swaps elements of tuple
+swap :: (a,b) -> (b,a)
+swap (x,y) = (y,x)
+
 -- | Apply a function to both elements of a Tuple
 both :: (a -> b) -> (a,a) -> (b,b)
 both f (x, y) = (f x, f y)

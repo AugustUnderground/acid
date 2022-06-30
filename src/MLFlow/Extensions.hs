@@ -6,6 +6,7 @@
 -- | ACiD Specific Extensions to the mlflow-hs package
 module MLFlow.Extensions where
 
+import           Lib
 import qualified Torch                 as T
 import qualified Data.Map              as M
 import           Data.Maybe                    (fromJust)
@@ -114,6 +115,14 @@ trackLoss tracker@Tracker{..} epoch ident loss =
     MLF.logMetric uri runId' ident loss epoch
   where
     runId' = runId tracker "model" 
+
+-- | Track the number of steps it took to solve environemnts
+trackNumSteps :: Tracker -> M.Map Int Float -> IO ()
+trackNumSteps tracker@Tracker{..} steps =
+    mapM_ (uncurry (MLF.logMetric uri runId' ident) . swap) (M.toList steps)
+  where
+    runId' = runId tracker "model" 
+    ident  = "Steps"
 
 -- | Write Reward to Tracking Server
 trackReward :: Tracker -> Int -> T.Tensor -> IO ()
